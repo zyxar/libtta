@@ -43,6 +43,11 @@
 #define TTA_EXTERN_API __attribute__((visibility("default")))
 #define TTA_ALIGNED(n) __attribute__((aligned(n), packed))
 #define __forceinline static __inline
+#ifndef aligned_alloc
+#define aligned_alloc(__alignment,__length) ({ \
+	void *ptr; \
+	(posix_memalign(&ptr,__alignment,__length)) ? NULL : ptr; })
+#endif
 #else // MSVC
 #define CALLBACK __stdcall
 #define TTA_EXTERN_API __declspec(dllexport)

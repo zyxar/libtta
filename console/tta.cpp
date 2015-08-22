@@ -12,6 +12,7 @@
 #include "../libtta.h"
 #include "../config.h"
 #include "tta.h"
+#include <new>
 
 using namespace tta;
 
