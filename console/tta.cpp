@@ -382,7 +382,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, void const *passwd, 
 
 		TTA->finalize();
 		ret = 0;
-	} catch (tta_exception ex) {
+	} catch (tta_exception& ex) {
 		tta_strerror(ex.code());
 	}
 
@@ -421,7 +421,7 @@ int decompress(HANDLE infile, HANDLE outfile, void const *passwd, int pwlen) {
 
 	try {
 		TTA->init_get_info(&info, 0);
-	} catch (tta_exception ex) {
+	} catch (tta_exception& ex) {
 		tta_strerror(ex.code());
 		goto done;
 	}
@@ -466,7 +466,7 @@ int decompress(HANDLE infile, HANDLE outfile, void const *passwd, int pwlen) {
 			} else break;
 		}
 		ret = 0;
-	} catch (tta_exception ex) {
+	} catch (tta_exception& ex) {
 		tta_strerror(ex.code());
 	}
 

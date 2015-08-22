@@ -172,7 +172,7 @@ namespace tta
 	public:
 		bool seek_allowed;	// seek table flag
 
-		tta_decoder(TTA_io_callback *iocb);
+		explicit tta_decoder(TTA_io_callback *iocb);
 		virtual ~tta_decoder();
 
 		void init_get_info(TTA_info *info, TTAuint64 pos);
@@ -209,7 +209,7 @@ namespace tta
 	/////////////////////// TTA encoder functions /////////////////////////
 	class TTA_EXTERN_API tta_encoder {
 	public:
-		tta_encoder(TTA_io_callback *iocb);
+		explicit tta_encoder(TTA_io_callback *iocb);
 		virtual ~tta_encoder();
 
 		void init_set_info(TTA_info *info, TTAuint64 pos);
@@ -247,7 +247,7 @@ namespace tta
 		tta_error err_code;
 
 	public:
-		tta_exception(tta_error code) : err_code(code) {}
+		explicit tta_exception(tta_error code) : err_code(code) {}
 		tta_error code() const { return err_code; }
 	}; // class tta_exception
 } // namespace tta
