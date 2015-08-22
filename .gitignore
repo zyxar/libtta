@@ -1,0 +1,10 @@
+Makefile
+config.h
+config.log
+config.status
+console/.deps/
+console/Makefile
+console/tta
+*.a
+*.o
+stamp-h1
