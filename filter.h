@@ -16,6 +16,10 @@
 #if defined(CPU_ARM) && defined(ENABLE_ASM) // implements in filter_arm.S
 	extern int hybrid_filter_dec(TTA_fltst *fs, int *in);
 	extern int hybrid_filter_enc(TTA_fltst *fs, int *in);
+#elif defined(CPU_X86) && defined(ENABLE_AVX)
+
+#include "filter_avx.h"
+
 #elif defined(ENABLE_SSE2) || defined(ENABLE_SSE4)
 
 #if defined(ENABLE_SSE4)
@@ -219,7 +223,6 @@ static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
 	*in -= (sum >> fs->shift);
 	fs->error = *in;
 }
-
 
 #else // PORTABLE
 
