@@ -15,6 +15,9 @@
 /* Define to enable FRW optimization */
 #cmakedefine ENABLE_FRW
 
+/* Define to use AVX instructions */
+#cmakedefine ENABLE_AVX
+
 /* Define to use SSE2 instructions */
 #cmakedefine ENABLE_SSE2
 
