@@ -8,3 +8,4 @@ console/tta
 *.a
 *.o
 stamp-h1
+build/
