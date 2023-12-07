@@ -140,7 +140,7 @@ typedef struct {
 	TTA_fltst fst;
 	TTA_adapt rice;
 	TTAint32 prev;
-} TTA_ALIGNED(16) TTA_codec;
+} TTA_ALIGNED(32) TTA_codec; // avx requires alignment of 32 bytes (for fst)
 
 typedef struct _tag_TTA_io_callback {
 	TTAint32 (CALLBACK *read)(struct _tag_TTA_io_callback *, TTAuint8 *, TTAuint32);
