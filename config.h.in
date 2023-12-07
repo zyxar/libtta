@@ -42,11 +42,6 @@
 /* Define to the version of this package. */
 #cmakedefine PACKAGE_VERSION @PACKAGE_VERSION@
 
-/* Define to 1 if all of the C90 standard headers exist (not just the ones
-   required in a freestanding environment). This macro is provided for
-   backward compatibility; new code need not use it. */
-#cmakedefine01 STDC_HEADERS
-
 /* Version number of package */
 #cmakedefine VERSION @VERSION@
 
