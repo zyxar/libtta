@@ -44,6 +44,7 @@ add_library               (libtta SHARED ${PROJECT_FILES})
 target_include_directories(libtta PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties     (libtta PROPERTIES LINKER_LANGUAGE CXX)
 set_target_properties     (libtta PROPERTIES OUTPUT_NAME tta)
+set_target_properties     (libtta PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/libtta.h)
 
 add_library               (libtta.a STATIC ${PROJECT_FILES})
 target_include_directories(libtta.a PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
@@ -55,3 +56,9 @@ target_include_directories(tta.exe PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties     (tta.exe PROPERTIES LINKER_LANGUAGE CXX)
 set_target_properties     (tta.exe PROPERTIES OUTPUT_NAME tta)
 target_link_libraries     (tta.exe PUBLIC libtta.a)
+
+install(TARGETS libtta libtta.a tta.exe
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+  PUBLIC_HEADER DESTINATION include)
