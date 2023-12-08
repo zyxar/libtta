@@ -78,9 +78,12 @@ static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
 	fs->error = *in;
 	*in += (sum >> fs->shift);
 
-	pA[4] = -pA[5]; pA[5] = -pA[6];
-	pA[6] = *in - pA[7]; pA[7] = *in;
-	pA[5] += pA[6]; pA[4] += pA[5];
+	xmA2 = _mm_sub_epi32(
+		_mm_sub_epi32(
+			_mm_sub_epi32(_mm_set1_epi32(*in), _mm_srli_si128(xmA2, 4)), 
+			_mm_srli_si128(xmA2, 8)),
+		_mm_srli_si128(xmA2, 12));
+	_mm_store_si128((__m128i*)(pA + 4), xmA2);
 } // hybrid_filter_dec
 
 ////////////////////////// hybrid_filter_sse4_enc ///////////////////////////
@@ -120,14 +123,17 @@ static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
 	xmA1 = _mm_or_si128(_mm_srli_si128(xmA1, 4), _mm_slli_si128(xmA2, 12));
 	xmM2 = _mm_andnot_si128(_mm_setr_epi32(0, 1, 1, 3),
 		_mm_or_si128(_mm_srai_epi32(xmA2, 30), _mm_setr_epi32(1, 2, 2, 4)));
-
+	
 	_mm_store_si128((__m128i*)pA, xmA1);
 	_mm_store_si128((__m128i*)pM, xmM1);
 	_mm_store_si128((__m128i*)(pM + 4), xmM2);
 
-	pA[4] = -pA[5]; pA[5] = -pA[6];
-	pA[6] = *in - pA[7]; pA[7] = *in;
-	pA[5] += pA[6]; pA[4] += pA[5];
+	xmA2 = _mm_sub_epi32(
+		_mm_sub_epi32(
+			_mm_sub_epi32(_mm_set1_epi32(*in), _mm_srli_si128(xmA2, 4)), 
+			_mm_srli_si128(xmA2, 8)),
+		_mm_srli_si128(xmA2, 12));
+	_mm_store_si128((__m128i*)(pA + 4), xmA2);
 
 	*in -= (sum >> fs->shift);
 	fs->error = *in;
