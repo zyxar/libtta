@@ -25,20 +25,22 @@ static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
 	xdlo = _mm_add_epi32(xdlo, _mm_unpackhi_epi64(xdlo, xdlo));
 	sum += _mm_cvtsi128_si32(xdlo) + _mm_extract_epi32(xdlo, 1);
 
+	__m128i xa1 = _mm256_extracti128_si256(xa, 1);
 	xm = _mm256_alignr_epi8(_mm256_permute2x128_si256(xm, xm, _MM_SHUFFLE(2, 0, 0, 1)), xm, 4); // ignore hi
 	xm = _mm256_inserti128_si256(xm, _mm_andnot_si128(_mm_setr_epi32(0, 1, 1, 3),
-		_mm_or_si128(_mm_srai_epi32(_mm256_extracti128_si256(xa, 1), 30), _mm_setr_epi32(1, 2, 2, 4))), 1);
-	xa = _mm256_alignr_epi8(_mm256_permute2x128_si256(xa, xa, _MM_SHUFFLE(2, 0, 0, 1)), xa, 4); // ignore hi
-
-	_mm_store_si128((__m128i*)pA, _mm256_castsi256_si128(xa));
+		_mm_or_si128(_mm_srai_epi32(xa1, 30), _mm_setr_epi32(1, 2, 2, 4))), 1);
 	_mm256_store_si256((__m256i*)pM, xm);
 
 	fs->error = *in;
 	*in += (sum >> fs->shift);
 
-	pA[4] = -pA[5]; pA[5] = -pA[6];
-	pA[6] = *in - pA[7]; pA[7] = *in;
-	pA[5] += pA[6]; pA[4] += pA[5];
+	xa = _mm256_alignr_epi8(_mm256_permute2x128_si256(xa, xa, _MM_SHUFFLE(2, 0, 0, 1)), xa, 4); // ignore hi
+	xa = _mm256_inserti128_si256(xa, _mm_sub_epi32(
+		_mm_sub_epi32(
+			_mm_sub_epi32(_mm_set1_epi32(*in), _mm_srli_si128(xa1, 4)), 
+			_mm_srli_si128(xa1, 8)),
+		_mm_srli_si128(xa1, 12)), 1);
+	_mm256_store_si256((__m256i*)pA, xa);
 }
 
 static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
@@ -66,17 +68,19 @@ static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
 	xdlo = _mm_add_epi32(xdlo, _mm_unpackhi_epi64(xdlo, xdlo));
 	sum += _mm_cvtsi128_si32(xdlo) + _mm_extract_epi32(xdlo, 1);
 
+	__m128i xa1 = _mm256_extracti128_si256(xa, 1);
 	xm = _mm256_alignr_epi8(_mm256_permute2x128_si256(xm, xm, _MM_SHUFFLE(2, 0, 0, 1)), xm, 4); // ignore hi
 	xm = _mm256_inserti128_si256(xm, _mm_andnot_si128(_mm_setr_epi32(0, 1, 1, 3),
-		_mm_or_si128(_mm_srai_epi32(_mm256_extracti128_si256(xa, 1), 30), _mm_setr_epi32(1, 2, 2, 4))), 1);
-	xa = _mm256_alignr_epi8(_mm256_permute2x128_si256(xa, xa, _MM_SHUFFLE(2, 0, 0, 1)), xa, 4); // ignore hi
-
-	_mm_store_si128((__m128i*)pA, _mm256_castsi256_si128(xa));
+		_mm_or_si128(_mm_srai_epi32(xa1, 30), _mm_setr_epi32(1, 2, 2, 4))), 1);
 	_mm256_store_si256((__m256i*)pM, xm);
 
-	pA[4] = -pA[5]; pA[5] = -pA[6];
-	pA[6] = *in - pA[7]; pA[7] = *in;
-	pA[5] += pA[6]; pA[4] += pA[5];
+	xa = _mm256_alignr_epi8(_mm256_permute2x128_si256(xa, xa, _MM_SHUFFLE(2, 0, 0, 1)), xa, 4); // ignore hi
+	xa = _mm256_inserti128_si256(xa, _mm_sub_epi32(
+		_mm_sub_epi32(
+			_mm_sub_epi32(_mm_set1_epi32(*in), _mm_srli_si128(xa1, 4)), 
+			_mm_srli_si128(xa1, 8)),
+		_mm_srli_si128(xa1, 12)), 1);
+	_mm256_store_si256((__m256i*)pA, xa);
 
 	*in -= (sum >> fs->shift);
 	fs->error = *in;
