@@ -156,12 +156,9 @@ static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
 	TTAint32 sum = fs->round;
 	__simd_i256 xmA, xmB, xmM;
 
-	xmA.part[0] = vld1q_s32(pA);
-	xmA.part[0] = vld1q_s32(pA+4);
-	xmB.part[0] = vld1q_s32(pB);
-	xmB.part[0] = vld1q_s32(pB+4);
-	xmM.part[0] = vld1q_s32(pM);
-	xmM.part[0] = vld1q_s32(pM+4);
+	xmA.self = simd_make_int8(vld1q_s32(pA), vld1q_s32(pA+4));
+	xmB.self = simd_make_int8(vld1q_s32(pB), vld1q_s32(pB+4));
+	xmM.self = simd_make_int8(vld1q_s32(pM), vld1q_s32(pM+4));
 
 	if (fs->error < 0) {
 		xmB.self -= xmM.self;
@@ -198,12 +195,9 @@ static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
 	TTAint32 sum = fs->round;
 	__simd_i256 xmA, xmB, xmM;
 
-	xmA.part[0] = vld1q_s32(pA);
-	xmA.part[0] = vld1q_s32(pA+4);
-	xmB.part[0] = vld1q_s32(pB);
-	xmB.part[0] = vld1q_s32(pB+4);
-	xmM.part[0] = vld1q_s32(pM);
-	xmM.part[0] = vld1q_s32(pM+4);
+	xmA.self = simd_make_int8(vld1q_s32(pA), vld1q_s32(pA+4));
+	xmB.self = simd_make_int8(vld1q_s32(pB), vld1q_s32(pB+4));
+	xmM.self = simd_make_int8(vld1q_s32(pM), vld1q_s32(pM+4));
 
 	if (fs->error < 0) {
 		xmB.self -= xmM.self;
