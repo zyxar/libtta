@@ -144,87 +144,90 @@ static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
 #include <simd/simd.h>
 
 typedef union {
-    int32x4_t s32[2];
     simd_int4 part[2];
     simd_int8 self;
 } __simd_i256 __attribute__((aligned(32)));
 
 
 static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
-	register __simd_i256 xmA, xmB, xmM;
+	TTAint32 *pA = fs->dl;
+	TTAint32 *pB = fs->qm;
+	TTAint32 *pM = fs->dx;
+	TTAint32 sum = fs->round;
+	__simd_i256 xmA, xmB, xmM;
 
-	xmA.self = simd_make_int8(vld1q_s32(pA), vld1q_s32(pA+4));
-	xmB.self = simd_make_int8(vld1q_s32(pB), vld1q_s32(pB+4));
-	xmM.self = simd_make_int8(vld1q_s32(pM), vld1q_s32(pM+4));
+	xmA.part[0] = vld1q_s32(pA);
+	xmA.part[0] = vld1q_s32(pA+4);
+	xmB.part[0] = vld1q_s32(pB);
+	xmB.part[0] = vld1q_s32(pB+4);
+	xmM.part[0] = vld1q_s32(pM);
+	xmM.part[0] = vld1q_s32(pM+4);
 
 	if (fs->error < 0) {
 		xmB.self -= xmM.self;
 	} else if (fs->error > 0) {
 		xmB.self += xmM.self;
 	}
-	vst1q_s32(pB, xmB.s32[0]);
-	vst1q_s32(pB+4, xmB.s32[1]);
+	vst1q_s32(pB, xmB.part[0]);
+	vst1q_s32(pB+4, xmB.part[1]);
 
 	sum += simd_reduce_add(xmA.self * xmB.self);
 
-	xmM.s32[0] = vorrq_s32(vreinterpretq_s32_s8(vextq_s8(xmM.s32[0], vdupq_n_s8(0), 4)), 
-							vreinterpretq_s32_s8(vextq_s8(vdupq_n_s8(0), xmM.s32[1], 16 - 12))); // pM[0] = pM[1]; pM[1] = pM[2]; pM[2] = pM[3]; pM[3] = pM[4];
-	xmA.s32[0] = vorrq_s32(vreinterpretq_s32_s8(vextq_s8(xmA.s32[0], vdupq_n_s8(0), 4)), 
-							vreinterpretq_s32_s8(vextq_s8(vdupq_n_s8(0), xmA.s32[1], 16 - 12))); // pA[0] = pA[1]; pA[1] = pA[2]; pA[2] = pA[3]; pA[3] = pA[4];
-
+	xmM.part[0] = (simd_int4)vextq_s8(xmM.part[0], vdupq_n_s8(0), 4) | (simd_int4)vextq_s8(vdupq_n_s8(0), xmM.part[1], 16 - 12); // pM[0] = pM[1]; pM[1] = pM[2]; pM[2] = pM[3]; pM[3] = pM[4];
+	xmA.part[0] = (simd_int4)vextq_s8(xmA.part[0], vdupq_n_s8(0), 4) | (simd_int4)vextq_s8(vdupq_n_s8(0), xmA.part[1], 16 - 12); // pA[0] = pA[1]; pA[1] = pA[2]; pA[2] = pA[3]; pA[3] = pA[4];
 	xmM.part[1] = ((xmA.part[1] >> 30) | simd_make_int4(1, 2, 2, 4)) & simd_make_int4(~0, ~1, ~1, ~3);
 
-	vst1q_s32(pA, xmA.s32[0]);
-	vst1q_s32(pM, xmM.s32[0]);
-	vst1q_s32(pM+4, xmM.s32[1]);
+	vst1q_s32(pA, xmA.part[0]);
+	vst1q_s32(pM, xmM.part[0]);
+	vst1q_s32(pM+4, xmM.part[1]);
 
 	fs->error = *in;
 	*in += (sum >> fs->shift);
 
-	pA[4] = -pA[5]; pA[5] = -pA[6];
-	pA[6] = *in - pA[7]; pA[7] = *in;
-	pA[5] += pA[6]; pA[4] += pA[5];
+	simd_int4 i = simd_make_int4(*in, *in, *in, *in);
+	i -= (simd_int4)vextq_s8(xmA.part[1], vdupq_n_s8(0), 4);
+	i -= (simd_int4)vextq_s8(xmA.part[1], vdupq_n_s8(0), 8);
+	i -= (simd_int4)vextq_s8(xmA.part[1], vdupq_n_s8(0), 12);
+	vst1q_s32(pA+4, i);
 }
 
 static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
-	register __simd_i256 xmA, xmB, xmM;
+	TTAint32 *pA = fs->dl;
+	TTAint32 *pB = fs->qm;
+	TTAint32 *pM = fs->dx;
+	TTAint32 sum = fs->round;
+	__simd_i256 xmA, xmB, xmM;
 
-	xmA.self = simd_make_int8(vld1q_s32(pA), vld1q_s32(pA+4));
-	xmB.self = simd_make_int8(vld1q_s32(pB), vld1q_s32(pB+4));
-	xmM.self = simd_make_int8(vld1q_s32(pM), vld1q_s32(pM+4));
+	xmA.part[0] = vld1q_s32(pA);
+	xmA.part[0] = vld1q_s32(pA+4);
+	xmB.part[0] = vld1q_s32(pB);
+	xmB.part[0] = vld1q_s32(pB+4);
+	xmM.part[0] = vld1q_s32(pM);
+	xmM.part[0] = vld1q_s32(pM+4);
 
 	if (fs->error < 0) {
 		xmB.self -= xmM.self;
 	} else if (fs->error > 0) {
 		xmB.self += xmM.self;
 	}
-	vst1q_s32(pB, xmB.s32[0]);
-	vst1q_s32(pB+4, xmB.s32[1]);
+	vst1q_s32(pB, xmB.part[0]);
+	vst1q_s32(pB+4, xmB.part[1]);
 
 	sum += simd_reduce_add(xmA.self * xmB.self);
 
-	xmM.s32[0] = vorrq_s32(vreinterpretq_s32_s8(vextq_s8(xmM.s32[0], vdupq_n_s8(0), 4)), 
-							vreinterpretq_s32_s8(vextq_s8(vdupq_n_s8(0), xmM.s32[1], 16 - 12))); // pM[0] = pM[1]; pM[1] = pM[2]; pM[2] = pM[3]; pM[3] = pM[4];
-	xmA.s32[0] = vorrq_s32(vreinterpretq_s32_s8(vextq_s8(xmA.s32[0], vdupq_n_s8(0), 4)), 
-							vreinterpretq_s32_s8(vextq_s8(vdupq_n_s8(0), xmA.s32[1], 16 - 12))); // pA[0] = pA[1]; pA[1] = pA[2]; pA[2] = pA[3]; pA[3] = pA[4];
-
+	xmM.part[0] = (simd_int4)vextq_s8(xmM.part[0], vdupq_n_s8(0), 4) | (simd_int4)vextq_s8(vdupq_n_s8(0), xmM.part[1], 16 - 12); // pM[0] = pM[1]; pM[1] = pM[2]; pM[2] = pM[3]; pM[3] = pM[4];
+	xmA.part[0] = (simd_int4)vextq_s8(xmA.part[0], vdupq_n_s8(0), 4) | (simd_int4)vextq_s8(vdupq_n_s8(0), xmA.part[1], 16 - 12); // pA[0] = pA[1]; pA[1] = pA[2]; pA[2] = pA[3]; pA[3] = pA[4];
 	xmM.part[1] = ((xmA.part[1] >> 30) | simd_make_int4(1, 2, 2, 4)) & simd_make_int4(~0, ~1, ~1, ~3);
 
-	vst1q_s32(pA, xmA.s32[0]);
-	vst1q_s32(pM, xmM.s32[0]);
-	vst1q_s32(pM+4, xmM.s32[1]);
+	vst1q_s32(pA, xmA.part[0]);
+	vst1q_s32(pM, xmM.part[0]);
+	vst1q_s32(pM+4, xmM.part[1]);
 
-	pA[4] = -pA[5]; pA[5] = -pA[6];
-	pA[6] = *in - pA[7]; pA[7] = *in;
-	pA[5] += pA[6]; pA[4] += pA[5];
+	simd_int4 i = simd_make_int4(*in, *in, *in, *in);
+	i -= (simd_int4)vextq_s8(xmA.part[1], vdupq_n_s8(0), 4);
+	i -= (simd_int4)vextq_s8(xmA.part[1], vdupq_n_s8(0), 8);
+	i -= (simd_int4)vextq_s8(xmA.part[1], vdupq_n_s8(0), 12);
+	vst1q_s32(pA+4, i);
 
 	*in -= (sum >> fs->shift);
 	fs->error = *in;
