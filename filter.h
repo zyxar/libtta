@@ -20,7 +20,7 @@
 
 #include "filter_avx.h"
 
-#elif defined(ENABLE_SSE2) || defined(ENABLE_SSE4)
+#elif defined(CPU_X86) && (defined(ENABLE_SSE2) || defined(ENABLE_SSE4))
 
 #if defined(ENABLE_SSE4)
 #include <smmintrin.h>
@@ -139,7 +139,7 @@ static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
 	fs->error = *in;
 } // hybrid_filter_enc
 
-#elif defined __aarch64__ && defined __APPLE__
+#elif defined(__aarch64__) && defined(__APPLE__)
 
 #include <simd/simd.h>
 

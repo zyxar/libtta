@@ -70,6 +70,14 @@ typedef struct {
 
 static TTAwchar *myname = NULL;
 
+#if defined(CPU_X86)
+unsigned long long tta_xgetbv(unsigned int id){
+    unsigned int eax, edx;
+    __asm__ volatile ("xgetbv" : "=a"(eax), "=d"(edx) : "c"(id));
+    return ((unsigned long long)edx << 32) | eax;
+}
+#endif
+
 /////////////////////////// TTA common functions ////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
@@ -283,7 +291,23 @@ int test_libtta_compatibility() {
 		((cx & 0x0000001) && ret == CPU_ARCH_IX86_SSE3) ||
 		((cx & 0x0080000) && ret == CPU_ARCH_IX86_SSE4_1))
 		return 0;
+	else if (ret == CPU_ARCH_IX86_AVX) {
+		bool avx = cx & (1 << 28) || false;
+		bool xsave = cx & (1 << 27) || false;
+		if (xsave && avx) {
+			unsigned long long mask = tta_xgetbv(0);
+			if ((mask & 0x6) == 0x6) return 0;
+		}
 	}
+	}
+#elif defined(CPU_ARM)
+
+#if defined(__aarch64__)
+	if (ret == CPU_ARCH_AARCH64) return 0;
+#else
+	if (ret == CPU_ARCH_ARM) return 0;
+#endif
+
 #endif
 
 	return ret;
