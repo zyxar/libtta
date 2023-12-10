@@ -25,25 +25,25 @@
 #cmakedefine ENABLE_SSE4
 
 /* Name of package */
-#cmakedefine PACKAGE @PACKAGE@
+#define PACKAGE "libtta-cpp"
 
 /* Define to the address where bug reports for this package should be sent. */
-#cmakedefine PACKAGE_BUGREPORT @PACKAGE_BUGREPORT@
+#define PACKAGE_BUGREPORT "info@true-audio.com"
 
 /* Define to the full name of this package. */
-#cmakedefine PACKAGE_NAME @PACKAGE_NAME@
+#define PACKAGE_NAME "libtta-cpp"
 
 /* Define to the full name and version of this package. */
-#cmakedefine PACKAGE_STRING @PACKAGE_STRING@
+#define PACKAGE_STRING "libtta-cpp;2.3"
 
 /* Define to the one symbol short name of this package. */
-#cmakedefine PACKAGE_TARNAME @PACKAGE_TARNAME@
+#define PACKAGE_TARNAME "libtta-cpp"
 
 /* Define to the home page for this package. */
-#cmakedefine PACKAGE_URL @PACKAGE_URL@
+/* #undef PACKAGE_URL */
 
 /* Define to the version of this package. */
-#cmakedefine PACKAGE_VERSION @PACKAGE_VERSION@
+#define PACKAGE_VERSION "2.3"
 
 /* Version number of package */
-#cmakedefine VERSION @VERSION@
+#define VERSION "2.3"

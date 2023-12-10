@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 project               (tta VERSION 2.3 LANGUAGES CXX)
 set                   (CMAKE_BUILD_TYPE Release)
+set                   (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # set                   (CMAKE_CXX_STANDARD 11)
-# set                   (CMAKE_CXX_VISIBILITY_PRESET hidden)
-# set                   (CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
 add_compile_options   (-Wall -O2 -funroll-loops -fomit-frame-pointer)
 
@@ -31,14 +30,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(mipsel)")
     add_compile_options(-mips32r2 -mtune=24kf)
 endif ()
 
-set(PACKAGE_NAME \"libtta-cpp\")
-set(PACKAGE_TARNAME \"libtta-cpp\")
-set(PACKAGE_VERSION \"2.3\")
-set(PACKAGE_STRING \"libtta-cpp 2.3\")
-set(PACKAGE_BUGREPORT \"info@true-audio.com\")
-set(PACKAGE \"libtta-cpp\")
-set(VERSION \"2.3\")
-configure_file(config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h @ONLY)
+configure_file(config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
 
 add_library               (libtta SHARED ${PROJECT_FILES})
 target_include_directories(libtta PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
