@@ -76,7 +76,11 @@ typedef int (HANDLE);
 #define tta_reset(__handle) lseek64(__handle,0,SEEK_SET)
 #define tta_memclear(__dest,__length) memset(__dest,0,__length)
 #define tta_memcpy(__dest,__source,__length) memcpy(__dest,__source,__length)
+#if defined(__APPLE__)
+#define tta_malloc(__length) _aligned_alloc(16,__length)
+#else
 #define tta_malloc(__length) aligned_alloc(16,__length)
+#endif
 #define tta_free free
 
 #define tta_cpuid(func,ax,bx,cx,dx) \

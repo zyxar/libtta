@@ -4,7 +4,7 @@ set                   (CMAKE_BUILD_TYPE Release)
 set                   (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # set                   (CMAKE_CXX_STANDARD 11)
 
-add_compile_options   (-Wall -O2 -funroll-loops -fomit-frame-pointer)
+add_compile_options   (-Wall -Wpedantic -O2 -funroll-loops -fomit-frame-pointer)
 
 set (PROJECT_FILES libtta.cpp libtta.h filter.h)
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
