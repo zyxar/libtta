@@ -324,6 +324,8 @@ fileio* fifo::io() const { return m_io; }
 
 void fifo::reader_start() { m_pos = &m_end; }
 
+void fifo::writer_start() { m_pos = m_buffer; }
+
 void fifo::reset() {
 	// init crc32, reset counter
 	m_crc = 0xffffffffUL;
@@ -367,6 +369,10 @@ bool fifo::read_crc32() {
 
 void fifo::reader_skip_bytes(TTAuint32 size) {
 	while (size--) read_byte();
+}
+
+void fifo::writer_skip_bytes(TTAuint32 size) {
+	while (size--) write_byte(0);
 }
 
 TTAuint32 fifo::skip_id3v2() {
@@ -414,6 +420,24 @@ TTAuint32 fifo::read_tta_header(TTA_info *info) {
 
 	size += 22; // sizeof TTA header
 	return size;
+}
+
+TTAuint32 fifo::write_tta_header(TTA_info *info) {
+	this->reset();
+	// write TTA1 signature
+	write_byte('T');
+	write_byte('T');
+	write_byte('A');
+	write_byte('1');
+
+	write_uint16(info->format);
+	write_uint16(info->nch);
+	write_uint16(info->bps);
+	write_uint32(info->sps);
+	write_uint32(info->samples);
+
+	write_crc32();
+	return 22; // sizeof TTA1 header
 }
 
 TTAuint32 fifo::count() const { return m_count; }
@@ -480,6 +504,112 @@ TTAint32 fifo::get_value(TTA_adapt *rice) {
 	value = DEC(value);
 
 	return value;
+}
+
+void fifo::writer_done() {
+	TTAint32 buffer_size = (TTAint32)(m_pos - m_buffer);
+	if (buffer_size) {
+		if (m_io->Write(m_buffer, buffer_size) != buffer_size)
+			throw tta_exception(TTA_WRITE_ERROR);
+		m_pos = m_buffer;
+	}
+}
+
+void fifo::write_byte(TTAuint32 value) {
+	if (m_pos == &m_end) {
+		if (m_io->Write(m_buffer, TTA_FIFO_BUFFER_SIZE) != TTA_FIFO_BUFFER_SIZE)
+			throw tta_exception(TTA_WRITE_ERROR);
+		m_pos = m_buffer;
+	}
+	// update crc32 and statistics
+	m_crc = crc32_table[(m_crc ^ value) & 0xff] ^ (m_crc >> 8);
+	m_count++;
+	*m_pos++ = (value & 0xff);
+}
+
+void fifo::write_uint16(TTAuint32 value) {
+	write_byte(value);
+	write_byte(value >> 8);
+} // write_uint16
+
+void fifo::write_uint32(TTAuint32 value) {
+	write_byte(value);
+	write_byte(value >> 8);
+	write_byte(value >> 16);
+	write_byte(value >> 24);
+} // write_uint32
+
+void fifo::write_crc32() {
+	TTAuint32 crc = m_crc ^ 0xffffffffUL;
+	write_uint32(crc);
+}
+
+void fifo::put_value(TTA_adapt *rice, TTAint32 value) {
+	TTAuint32 k, unary, outval;
+
+	outval = ENC(value);
+
+	// encode Rice unsigned
+	k = rice->k0;
+
+	rice->sum0 += outval - (rice->sum0 >> 4);
+	if (rice->k0 > 0 && rice->sum0 < shift_16[rice->k0])
+		rice->k0--;
+	else if (rice->sum0 > shift_16[rice->k0 + 1])
+		rice->k0++;
+
+	if (outval >= bit_shift[k]) {
+		outval -= bit_shift[k];
+		k = rice->k1;
+
+		rice->sum1 += outval - (rice->sum1 >> 4);
+		if (rice->k1 > 0 && rice->sum1 < shift_16[rice->k1])
+			rice->k1--;
+		else if (rice->sum1 > shift_16[rice->k1 + 1])
+			rice->k1++;
+
+		unary = 1 + (outval >> k);
+	} else unary = 0;
+
+	// put unary
+	do {
+		while (m_bcount >= 8) {
+			write_byte(m_bcache);
+			m_bcache >>= 8;
+			m_bcount -= 8;
+		}
+
+		if (unary > 23) {
+			m_bcache |= bit_mask[23] << m_bcount;
+			m_bcount += 23;
+			unary -= 23;
+		} else {
+			m_bcache |= bit_mask[unary] << m_bcount;
+			m_bcount += unary + 1;
+			unary = 0;
+		}
+	} while (unary);
+
+	// put binary
+	while (m_bcount >= 8) {
+		write_byte(m_bcache);
+		m_bcache >>= 8;
+		m_bcount -= 8;
+	}
+
+	if (k) {
+		m_bcache |= (outval & bit_mask[k]) << m_bcount;
+		m_bcount += k;
+	}
+}
+
+void fifo::flush_bit_cache() {
+	while (m_bcount) {
+		write_byte(m_bcache);
+		m_bcache >>= 8;
+		m_bcount = (m_bcount > 8) ? (m_bcount - 8) : 0;
+	}
+	write_crc32();
 }
 
 //////////////////////////// decoder functions //////////////////////////////
@@ -1003,19 +1133,19 @@ void tta_encoder::write_seek_table() {
 	if (seek_table == NULL)
 		return;
 
-	if (fifo.io->Seek(offset) < 0)
+	if (m_fifo.io()->Seek(offset) < 0)
 		throw tta_exception(TTA_SEEK_ERROR);
 
-	writer_start(&fifo);
-	writer_reset(&fifo);
+	m_fifo.writer_start();
+	m_fifo.reset();
 
 	for (i = 0; i < frames; i++) {
 		tmp = seek_table[i] & 0xffffffffUL;
-		write_uint32(&fifo, tmp);
+		m_fifo.write_uint32(tmp);
 	}
 
-	write_crc32(&fifo);
-	writer_done(&fifo);
+	m_fifo.write_crc32();
+	m_fifo.writer_done();
 } // write_seek_table
 
 void tta_encoder::set_password(void const *pstr, TTAuint32 len) {
@@ -1043,12 +1173,12 @@ void tta_encoder::frame_init(TTAuint32 frame) {
 
 	fpos = 0;
 
-	writer_reset(&fifo);
+	m_fifo.reset();
 } // frame_init
 
 void tta_encoder::frame_reset(TTAuint32 frame, fileio *io) {
-	fifo.io = io;
-	writer_start(&fifo);
+	m_fifo.io(io);
+	m_fifo.writer_start();
 	frame_init(frame);
 } // frame_reset
 
@@ -1061,11 +1191,11 @@ void tta_encoder::init_set_info(TTA_info *info, TTAuint64 pos) {
 		throw tta_exception(TTA_FORMAT_ERROR);
 
 	// set start position if required
-	if (pos && fifo.io->Seek(pos) < 0)
+	if (pos && m_fifo.io()->Seek(pos) < 0)
 		throw tta_exception(TTA_SEEK_ERROR);
 
-	writer_start(&fifo);
-	pos += write_tta_header(&fifo, info);
+	m_fifo.writer_start();
+	pos += m_fifo.write_tta_header(info);
 
 	offset = pos; // size of headers
 	format = info->format;
@@ -1081,7 +1211,7 @@ void tta_encoder::init_set_info(TTA_info *info, TTAuint64 pos) {
 	if (seek_table == NULL)
 		throw tta_exception(TTA_MEMORY_ERROR);
 
-	writer_skip_bytes(&fifo, (frames + 1) * 4);
+	m_fifo.writer_skip_bytes((frames + 1) * 4);
 
 	encoder_last = encoder + info->nch - 1;
 	shift_bits = (4 - depth) << 3;
@@ -1090,7 +1220,7 @@ void tta_encoder::init_set_info(TTA_info *info, TTAuint64 pos) {
 } // init_set_info
 
 void tta_encoder::finalize() {
-	writer_done(&fifo);
+	m_fifo.writer_done();
 	write_seek_table();
 } // finalize
 
@@ -1197,7 +1327,7 @@ void tta_encoder::process_stream(TTAuint8 *input, TTAuint32 in_bytes,
 		// compress stage 2: adaptive hybrid filter
 		hybrid_filter_enc(&enc->fst, &curr);
 
-		put_value(&fifo, &enc->rice, curr);
+		m_fifo.put_value(&enc->rice, curr);
 
 		if (enc < encoder_last) {
 			enc++;
@@ -1207,11 +1337,11 @@ void tta_encoder::process_stream(TTAuint8 *input, TTAuint32 in_bytes,
 		}
 
 		if (fpos == flen) {
-			flush_bit_cache(&fifo);
-			seek_table[fnum++] = fifo.count;
+			m_fifo.flush_bit_cache();
+			seek_table[fnum++] = m_fifo.count();
 
 			// update dynamic info
-			rate = (fifo.count << 3) / 1070;
+			rate = (m_fifo.count() << 3) / 1070;
 			if (tta_callback)
 				tta_callback(rate, fnum, frames);
 
@@ -1254,7 +1384,7 @@ void tta_encoder::process_frame(TTAuint8 *input, TTAuint32 in_bytes) {
 		// compress stage 2: adaptive hybrid filter
 		hybrid_filter_enc(&enc->fst, &curr);
 
-		put_value(&fifo, &enc->rice, curr);
+		m_fifo.put_value(&enc->rice, curr);
 
 		if (enc < encoder_last) {
 			enc++;
@@ -1264,10 +1394,10 @@ void tta_encoder::process_frame(TTAuint8 *input, TTAuint32 in_bytes) {
 		}
 
 		if (fpos == flen) {
-			flush_bit_cache(&fifo);
+			m_fifo.flush_bit_cache();
 
 			// update dynamic info
-			rate = (fifo.count << 3) / 1070;
+			rate = (m_fifo.count() << 3) / 1070;
 
 			break;
 		}
@@ -1276,8 +1406,7 @@ void tta_encoder::process_frame(TTAuint8 *input, TTAuint32 in_bytes) {
 
 TTAuint32 tta_encoder::get_rate() { return rate; }
 
-tta_encoder::tta_encoder(fileio *io) : seek_table(nullptr) {
-	fifo.io = io;
+tta_encoder::tta_encoder(fileio *io) : m_fifo(io), seek_table(nullptr) {
 	tta_memclear(data, 8);
 } // tta_encoder
 

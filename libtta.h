@@ -179,6 +179,7 @@ namespace tta
 
 		__inline void reset();
 		__inline void reader_start();
+		__inline void writer_start();
 		__inline TTAuint8 read_byte();
 		__inline TTAuint32 read_uint16();
 		__inline TTAuint32 read_uint32();
@@ -186,6 +187,15 @@ namespace tta
 		__inline TTAint32 get_value(TTA_adapt *rice);
 		__inline TTAuint32 count() const;
 		TTAuint32 read_tta_header(TTA_info *info);
+		TTAuint32 write_tta_header(TTA_info *info);
+		void writer_skip_bytes(TTAuint32 size);
+		void writer_done();
+		__inline void write_byte(TTAuint32 value);
+		__inline void write_uint16(TTAuint32 value);
+		__inline void write_uint32(TTAuint32 value);
+		__inline void write_crc32();
+		__inline void put_value(TTA_adapt *rice, TTAint32 value);
+		__inline void flush_bit_cache();
 
 	private:
 		void reader_skip_bytes(TTAuint32 size);
@@ -267,7 +277,7 @@ namespace tta
 	protected:
 		TTA_codec encoder[MAX_NCH]; // encoder (1 per channel)
 		TTAint8 data[8];	// encoder initialization data
-		TTA_fifo fifo;
+		fifo m_fifo;
 		TTA_codec *encoder_last;
 		TTAuint64 *seek_table; // the playing position table
 		TTAuint32 format;	// tta data format
