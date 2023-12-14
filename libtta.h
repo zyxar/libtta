@@ -148,6 +148,12 @@ typedef struct {
 	TTAint32 prev;
 } TTA_ALIGNED(32) TTA_codec; // avx requires alignment of 32 bytes (for fst)
 
+// progress callback
+typedef void (CALLBACK *TTA_CALLBACK)(TTAuint32, TTAuint32, TTAuint32);
+
+// architecture type compatibility
+TTA_EXTERN_API CPU_ARCH_TYPE tta_binary_version();
+
 namespace tta
 {
 	class fileio
@@ -201,27 +207,7 @@ namespace tta
 		void reader_skip_bytes(TTAuint32 size);
 		TTAuint32 skip_id3v2();
 	};
-} // namespace tta
 
-typedef struct {
-	TTAuint8 buffer[TTA_FIFO_BUFFER_SIZE];
-	TTAuint8 end;
-	TTAuint8 *pos;
-	TTAuint32 bcount; // count of bits in cache
-	TTAuint32 bcache; // bit cache
-	TTAuint32 crc;
-	TTAuint32 count;
-	tta::fileio *io;
-} TTA_ALIGNED(16) TTA_fifo;
-
-// progress callback
-typedef void (CALLBACK *TTA_CALLBACK)(TTAuint32, TTAuint32, TTAuint32);
-
-// architecture type compatibility
-TTA_EXTERN_API CPU_ARCH_TYPE tta_binary_version();
-
-namespace tta
-{
 	/////////////////////// TTA decoder functions /////////////////////////
 	class TTA_EXTERN_API tta_decoder {
 	public:
