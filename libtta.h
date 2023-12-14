@@ -182,7 +182,6 @@ namespace tta
 		virtual ~tta_decoder();
 
 		void init_get_info(TTA_info *info, TTAuint64 pos);
-		void init_set_info(TTA_info *info);
 		void set_password(void const *pstr, TTAuint32 len);
 		void frame_reset(TTAuint32 frame, TTA_io_callback *iocb);
 		int process_stream(TTAuint8 *output, TTAuint32 out_bytes, TTA_CALLBACK tta_callback=NULL);

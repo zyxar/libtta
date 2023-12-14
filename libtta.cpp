@@ -486,28 +486,6 @@ void tta_decoder::set_position(TTAuint32 seconds, TTAuint32 *new_pos) {
 	frame_init(frame, true);
 } // set_position
 
-void tta_decoder::init_set_info(TTA_info *info) {
-	// check for supported formats
-	if (info->format > 2 ||
-		info->bps < MIN_BPS ||
-		info->bps > MAX_BPS ||
-		info->nch > MAX_NCH)
-		throw tta_exception(TTA_FORMAT_ERROR);
-
-	format = info->format;
-	depth = (info->bps + 7) / 8;
-	flen_std = MUL_FRAME_TIME(info->sps);
-	flen_last = info->samples % flen_std;
-	frames = info->samples / flen_std + (flen_last ? 1 : 0);
-	if (!flen_last) flen_last = flen_std;
-	rate = 0;
-
-	decoder_last = decoder + info->nch - 1;
-	reader_start(&fifo);
-
-	frame_init(0, false);
-} // init_set_info
-
 void tta_decoder::init_get_info(TTA_info *info, TTAuint64 pos) {
 	// set start position if required
 	if (pos && fifo.io->seek(fifo.io, pos) < 0)
