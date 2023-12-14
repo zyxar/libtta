@@ -63,11 +63,6 @@ typedef struct {
 	WAVE_subformat est;
 } WAVE_ext_hdr;
 
-typedef struct {
-	TTA_io_callback iocb;
-	HANDLE handle;
-} TTA_io_callback_wrapper;
-
 static TTAwchar *myname = NULL;
 
 #if defined(CPU_X86)
@@ -257,26 +252,39 @@ void CALLBACK tta_callback(TTAuint32 rate, TTAuint32 fnum, TTAuint32 frames) {
 		tta_print("\rProgress: %02d%%", pcnt);
 } // tta_callback
 
-TTAint32 CALLBACK read_callback(TTA_io_callback *io, TTAuint8 *buffer, TTAuint32 size) {
-	TTA_io_callback_wrapper *iocb = (TTA_io_callback_wrapper *)io; 
+class tta_file_io : public fileio
+{
+private:
+	HANDLE m_handle;
+public:
+	tta_file_io(HANDLE handle);
+	~tta_file_io();
+
+	TTAint32 Read(TTAuint8 *buffer, TTAuint32 size);
+	TTAint32 Write(TTAuint8 *buffer, TTAuint32 size);
+	TTAint64 Seek(TTAint64 offset);
+};
+
+tta_file_io::tta_file_io(HANDLE handle) : m_handle(handle) {}
+tta_file_io::~tta_file_io() {}
+
+TTAint32 tta_file_io::Read(TTAuint8 *buffer, TTAuint32 size) {
 	TTAint32 result;
-	if (tta_read(iocb->handle, buffer, size, result))
+	if (tta_read(m_handle, buffer, size, result))
 		return result;
 	return 0;
-} // read_callback
+}
 
-TTAint32 CALLBACK write_callback(TTA_io_callback *io, TTAuint8 *buffer, TTAuint32 size) {
-	TTA_io_callback_wrapper *iocb = (TTA_io_callback_wrapper *)io; 
+TTAint32 tta_file_io::Write(TTAuint8 *buffer, TTAuint32 size) {
 	TTAint32 result;
-	if (tta_write(iocb->handle, buffer, size, result))
+	if (tta_write(m_handle, buffer, size, result))
 		return result;
 	return 0;
-} // write_callback
+}
 
-TTAint64 CALLBACK seek_callback(TTA_io_callback *io, TTAint64 offset) {
-	TTA_io_callback_wrapper *iocb = (TTA_io_callback_wrapper *)io; 
-	return tta_seek(iocb->handle, offset);
-} // seek_callback
+TTAint64 tta_file_io::Seek(TTAint64 offset) {
+	return tta_seek(m_handle, offset);
+}
 
 int test_libtta_compatibility() {
 	int ret = tta_binary_version();
@@ -321,16 +329,11 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, void const *passwd, 
 	void *aligned_encoder;
 	TTAuint32 data_size;
 	WAVE_hdr wave_hdr;
-	TTA_io_callback_wrapper io;
+	tta_file_io io(outfile);
 	TTAuint8 *buffer = NULL;
 	TTAuint32 buf_size, smp_size, len, res;
 	TTA_info info;
 	int ret = -1;
-
-	io.iocb.write = &write_callback;
-	io.iocb.seek = &seek_callback;
-	io.iocb.read = NULL;
-	io.handle = outfile;
 
 	if (read_wav_hdr(infile, &wave_hdr, &data_size)) {
 		tta_strerror(TTA_READ_ERROR);
@@ -349,7 +352,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, void const *passwd, 
 	}
 
 	aligned_encoder = tta_malloc(sizeof(tta_encoder));
-	TTA = new(aligned_encoder) tta_encoder((TTA_io_callback *)&io);
+	TTA = new(aligned_encoder) tta_encoder(&io);
 
 	smp_size = (wave_hdr.num_channels * ((wave_hdr.bits_per_sample + 7) / 8));
 	info.nch = wave_hdr.num_channels;
@@ -425,20 +428,15 @@ int decompress(HANDLE infile, HANDLE outfile, void const *passwd, int pwlen) {
 	tta_decoder *TTA;
 	void *aligned_decoder;
 	WAVE_hdr wave_hdr;
-	TTA_io_callback_wrapper io;
+	tta_file_io io(infile);
 	TTAuint8 *buffer = NULL;
 	TTAuint32 buf_size, smp_size, data_size, res;
 	TTAint32 len;
 	TTA_info info;
 	int ret = -1;
 
-	io.iocb.read = &read_callback;
-	io.iocb.seek = &seek_callback;
-	io.iocb.write = NULL;
-	io.handle = infile;
-
 	aligned_decoder = tta_malloc(sizeof(tta_decoder));
-	TTA = new(aligned_decoder)tta_decoder((TTA_io_callback *)&io);
+	TTA = new(aligned_decoder)tta_decoder(&io);
 
 	if (passwd && pwlen)
 		TTA->set_password(passwd, pwlen);

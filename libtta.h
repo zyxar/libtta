@@ -148,11 +148,17 @@ typedef struct {
 	TTAint32 prev;
 } TTA_ALIGNED(32) TTA_codec; // avx requires alignment of 32 bytes (for fst)
 
-typedef struct _tag_TTA_io_callback {
-	TTAint32 (CALLBACK *read)(struct _tag_TTA_io_callback *, TTAuint8 *, TTAuint32);
-	TTAint32 (CALLBACK *write)(struct _tag_TTA_io_callback *, TTAuint8 *, TTAuint32);
-	TTAint64 (CALLBACK *seek)(struct _tag_TTA_io_callback *, TTAint64 offset);
-} TTA_ALIGNED(16) TTA_io_callback;
+namespace tta
+{
+	class fileio
+	{
+	public:
+		virtual ~fileio() {}
+		virtual TTAint32 Read(TTAuint8 *buffer, TTAuint32 size) = 0;
+		virtual TTAint32 Write(TTAuint8 *buffer, TTAuint32 size) = 0;
+		virtual TTAint64 Seek(TTAint64 offset) = 0;
+	};
+} // namespace tta
 
 typedef struct {
 	TTAuint8 buffer[TTA_FIFO_BUFFER_SIZE];
@@ -162,7 +168,7 @@ typedef struct {
 	TTAuint32 bcache; // bit cache
 	TTAuint32 crc;
 	TTAuint32 count;
-	TTA_io_callback *io;
+	tta::fileio *io;
 } TTA_ALIGNED(16) TTA_fifo;
 
 // progress callback
@@ -178,12 +184,12 @@ namespace tta
 	public:
 		bool seek_allowed;	// seek table flag
 
-		explicit tta_decoder(TTA_io_callback *iocb);
+		explicit tta_decoder(fileio *io);
 		virtual ~tta_decoder();
 
 		void init_get_info(TTA_info *info, TTAuint64 pos);
 		void set_password(void const *pstr, TTAuint32 len);
-		void frame_reset(TTAuint32 frame, TTA_io_callback *iocb);
+		void frame_reset(TTAuint32 frame, fileio *io);
 		int process_stream(TTAuint8 *output, TTAuint32 out_bytes, TTA_CALLBACK tta_callback=NULL);
 		int process_frame(TTAuint32 in_bytes, TTAuint8 *output, TTAuint32 out_bytes);
 		void set_position(TTAuint32 seconds, TTAuint32 *new_pos);
@@ -214,12 +220,12 @@ namespace tta
 	/////////////////////// TTA encoder functions /////////////////////////
 	class TTA_EXTERN_API tta_encoder {
 	public:
-		explicit tta_encoder(TTA_io_callback *iocb);
+		explicit tta_encoder(fileio *io);
 		virtual ~tta_encoder();
 
 		void init_set_info(TTA_info *info, TTAuint64 pos);
 		void set_password(void const *pstr, TTAuint32 len);
-		void frame_reset(TTAuint32 frame, TTA_io_callback *iocb);
+		void frame_reset(TTAuint32 frame, fileio *io);
 		void process_stream(TTAuint8 *input, TTAuint32 in_bytes, TTA_CALLBACK tta_callback=NULL);
 		void process_frame(TTAuint8 *input, TTAuint32 in_bytes);
 		void finalize();

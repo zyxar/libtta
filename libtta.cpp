@@ -324,7 +324,7 @@ void reader_reset(TTA_fifo *s) {
 
 __forceinline TTAuint8 read_byte(TTA_fifo *s) {
 	if (s->pos == &s->end) {
-		if (!s->io->read(s->io, s->buffer, TTA_FIFO_BUFFER_SIZE))
+		if (!s->io->Read(s->buffer, TTA_FIFO_BUFFER_SIZE))
 			throw tta_exception(TTA_READ_ERROR);
 		s->pos = s->buffer;
 	}
@@ -449,7 +449,7 @@ void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
 
 	if (seek_needed && seek_allowed) {
 		TTAuint64 pos = seek_table[fnum];
-		if (pos && fifo.io->seek(fifo.io, pos) < 0)
+		if (pos && fifo.io->Seek(pos) < 0)
 			throw tta_exception(TTA_SEEK_ERROR);
 		reader_start(&fifo);
 	}
@@ -470,7 +470,7 @@ void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
 	reader_reset(&fifo);
 } // frame_init
 
-void tta_decoder::frame_reset(TTAuint32 frame, TTA_io_callback *iocb) {
+void tta_decoder::frame_reset(TTAuint32 frame, fileio *iocb) {
 	fifo.io = iocb;
 	reader_start(&fifo);
 	frame_init(frame, false);
@@ -488,7 +488,7 @@ void tta_decoder::set_position(TTAuint32 seconds, TTAuint32 *new_pos) {
 
 void tta_decoder::init_get_info(TTA_info *info, TTAuint64 pos) {
 	// set start position if required
-	if (pos && fifo.io->seek(fifo.io, pos) < 0)
+	if (pos && fifo.io->Seek(pos) < 0)
 		throw tta_exception(TTA_SEEK_ERROR);
 
 	reader_start(&fifo);
@@ -738,12 +738,9 @@ int tta_decoder::process_frame(TTAuint32 in_bytes, TTAuint8 *output,
 
 TTAuint32 tta_decoder::get_rate() { return rate; }
 
-tta_decoder::tta_decoder(TTA_io_callback *iocb) {
-	seek_table = NULL;
-	seek_allowed = false;
-	fifo.io = iocb;
+tta_decoder::tta_decoder(fileio *io) : seek_allowed(false), password_set(false), seek_table(nullptr) {
+	fifo.io = io;
 	tta_memclear(data, 8);
-	password_set = false;
 } // tta_decoder
 
 tta_decoder::~tta_decoder() {
@@ -767,7 +764,7 @@ void writer_done(TTA_fifo *s) {
 	TTAint32 buffer_size = (TTAint32)(s->pos - s->buffer);
 
 	if (buffer_size) {
-		if (s->io->write(s->io, s->buffer, buffer_size) != buffer_size)
+		if (s->io->Write(s->buffer, buffer_size) != buffer_size)
 			throw tta_exception(TTA_WRITE_ERROR);
 		s->pos = s->buffer;
 	}
@@ -775,7 +772,7 @@ void writer_done(TTA_fifo *s) {
 
 __forceinline void write_byte(TTA_fifo *s, TTAuint32 value) {
 	if (s->pos == &s->end) {
-		if (s->io->write(s->io, s->buffer, TTA_FIFO_BUFFER_SIZE) != TTA_FIFO_BUFFER_SIZE)
+		if (s->io->Write(s->buffer, TTA_FIFO_BUFFER_SIZE) != TTA_FIFO_BUFFER_SIZE)
 			throw tta_exception(TTA_WRITE_ERROR);
 		s->pos = s->buffer;
 	}
@@ -834,7 +831,7 @@ void tta_encoder::write_seek_table() {
 	if (seek_table == NULL)
 		return;
 
-	if (fifo.io->seek(fifo.io, offset) < 0)
+	if (fifo.io->Seek(offset) < 0)
 		throw tta_exception(TTA_SEEK_ERROR);
 
 	writer_start(&fifo);
@@ -877,8 +874,8 @@ void tta_encoder::frame_init(TTAuint32 frame) {
 	writer_reset(&fifo);
 } // frame_init
 
-void tta_encoder::frame_reset(TTAuint32 frame, TTA_io_callback *iocb) {
-	fifo.io = iocb;
+void tta_encoder::frame_reset(TTAuint32 frame, fileio *io) {
+	fifo.io = io;
 	writer_start(&fifo);
 	frame_init(frame);
 } // frame_reset
@@ -892,7 +889,7 @@ void tta_encoder::init_set_info(TTA_info *info, TTAuint64 pos) {
 		throw tta_exception(TTA_FORMAT_ERROR);
 
 	// set start position if required
-	if (pos && fifo.io->seek(fifo.io, pos) < 0)
+	if (pos && fifo.io->Seek(pos) < 0)
 		throw tta_exception(TTA_SEEK_ERROR);
 
 	writer_start(&fifo);
@@ -1107,9 +1104,8 @@ void tta_encoder::process_frame(TTAuint8 *input, TTAuint32 in_bytes) {
 
 TTAuint32 tta_encoder::get_rate() { return rate; }
 
-tta_encoder::tta_encoder(TTA_io_callback *iocb) {
-	seek_table = NULL;
-	fifo.io = iocb;
+tta_encoder::tta_encoder(fileio *io) : seek_table(nullptr) {
+	fifo.io = io;
 	tta_memclear(data, 8);
 } // tta_encoder
 
