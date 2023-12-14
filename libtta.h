@@ -158,6 +158,39 @@ namespace tta
 		virtual TTAint32 Write(TTAuint8 *buffer, TTAuint32 size) = 0;
 		virtual TTAint64 Seek(TTAint64 offset) = 0;
 	};
+
+	class TTA_ALIGNED(16) fifo
+	{
+	private:
+		TTAuint8 m_buffer[TTA_FIFO_BUFFER_SIZE];
+		TTAuint8 m_end;
+		TTAuint8 *m_pos;
+		TTAuint32 m_bcount; // count of bits in cache
+		TTAuint32 m_bcache; // bit cache
+		TTAuint32 m_crc;
+		TTAuint32 m_count;
+		fileio *m_io;
+	public:
+		fifo(fileio *io);
+		~fifo();
+
+		void io(fileio* io);
+		fileio* io() const;
+
+		__inline void reset();
+		__inline void reader_start();
+		__inline TTAuint8 read_byte();
+		__inline TTAuint32 read_uint16();
+		__inline TTAuint32 read_uint32();
+		__inline bool read_crc32();
+		__inline TTAint32 get_value(TTA_adapt *rice);
+		__inline TTAuint32 count() const;
+		TTAuint32 read_tta_header(TTA_info *info);
+
+	private:
+		void reader_skip_bytes(TTAuint32 size);
+		TTAuint32 skip_id3v2();
+	};
 } // namespace tta
 
 typedef struct {
@@ -198,7 +231,7 @@ namespace tta
 	protected:
 		TTA_codec decoder[MAX_NCH]; // decoder (1 per channel)
 		TTAint8 data[8];	// decoder initialization data
-		TTA_fifo fifo;
+		fifo m_fifo;
 		TTA_codec *decoder_last;
 		bool password_set;	// password protection flag
 		TTAuint64 *seek_table; // the playing position table
