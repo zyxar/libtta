@@ -310,7 +310,7 @@ __forceinline void filter_init(TTA_fltst *fs, TTAint8 *data, TTAint32 shift) {
 } // filter_init
 
 fifo::fifo(fileio *io) :
-	m_pos(&m_end),
+	m_pos(nullptr),
 	m_bcount(0),
 	m_bcache(0),
 	m_crc(0xffffffffUL),
@@ -322,7 +322,7 @@ fifo::~fifo() {}
 void fifo::io(fileio* io) { m_io = io; }
 fileio* fifo::io() const { return m_io; }
 
-void fifo::reader_start() { m_pos = &m_end; }
+void fifo::reader_start() { m_pos = m_buffer+TTA_FIFO_BUFFER_SIZE; }
 
 void fifo::writer_start() { m_pos = m_buffer; }
 
@@ -335,7 +335,7 @@ void fifo::reset() {
 }
 
 TTAuint8 fifo::read_byte() {
-	if (m_pos == &m_end) {
+	if (m_pos == m_buffer+TTA_FIFO_BUFFER_SIZE) {
 		if (!m_io->Read(m_buffer, TTA_FIFO_BUFFER_SIZE))
 			throw tta_exception(TTA_READ_ERROR);
 		m_pos = m_buffer;
@@ -516,7 +516,7 @@ void fifo::writer_done() {
 }
 
 void fifo::write_byte(TTAuint32 value) {
-	if (m_pos == &m_end) {
+	if (m_pos == m_buffer+TTA_FIFO_BUFFER_SIZE) {
 		if (m_io->Write(m_buffer, TTA_FIFO_BUFFER_SIZE) != TTA_FIFO_BUFFER_SIZE)
 			throw tta_exception(TTA_WRITE_ERROR);
 		m_pos = m_buffer;

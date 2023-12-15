@@ -169,7 +169,6 @@ namespace tta
 	{
 	private:
 		TTAuint8 m_buffer[TTA_FIFO_BUFFER_SIZE];
-		TTAuint8 m_end;
 		TTAuint8 *m_pos;
 		TTAuint32 m_bcount; // count of bits in cache
 		TTAuint32 m_bcache; // bit cache
