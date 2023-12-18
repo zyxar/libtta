@@ -142,12 +142,6 @@ typedef struct {
 	TTAuint32 sum1;
 } TTA_ALIGNED(16) TTA_adapt;
 
-typedef struct {
-	TTA_fltst fst;
-	TTA_adapt rice;
-	TTAint32 prev;
-} TTA_ALIGNED(32) TTA_codec; // avx requires alignment of 32 bytes (for fst)
-
 // progress callback
 typedef void (CALLBACK *TTA_CALLBACK)(TTAuint32, TTAuint32, TTAuint32);
 
@@ -156,6 +150,20 @@ TTA_EXTERN_API CPU_ARCH_TYPE tta_binary_version();
 
 namespace tta
 {
+	class TTA_ALIGNED(32) codec // avx requires alignment of 32 bytes (for fst)
+	{
+	public:
+		explicit codec();
+		virtual ~codec();
+		void init(TTAint8 *data, TTAint32 shift, TTAuint32 k0, TTAuint32 k1);
+		__inline void decode(TTAint32* value);
+		__inline void encode(TTAint32* value);
+	// private:
+		TTA_fltst m_fltst;
+		TTA_adapt m_adapt;
+		TTAint32 m_prev;
+	};
+
 	class fileio
 	{
 	public:
@@ -224,10 +232,10 @@ namespace tta
 		TTAuint32 get_rate();
 
 	protected:
-		TTA_codec decoder[MAX_NCH]; // decoder (1 per channel)
+		codec m_decoder[MAX_NCH]; // decoder (1 per channel)
 		TTAint8 data[8];	// decoder initialization data
 		fifo m_fifo;
-		TTA_codec *decoder_last;
+		codec *m_decoder_last;
 		bool password_set;	// password protection flag
 		TTAuint64 *seek_table; // the playing position table
 		TTAuint32 format;	// tta data format
@@ -260,10 +268,10 @@ namespace tta
 		TTAuint32 get_rate();
 
 	protected:
-		TTA_codec encoder[MAX_NCH]; // encoder (1 per channel)
+		codec m_encoder[MAX_NCH]; // encoder (1 per channel)
 		TTAint8 data[8];	// encoder initialization data
 		fifo m_fifo;
-		TTA_codec *encoder_last;
+		codec *m_encoder_last;
 		TTAuint64 *seek_table; // the playing position table
 		TTAuint32 format;	// tta data format
 		TTAuint32 rate;	// bitrate (kbps)

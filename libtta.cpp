@@ -260,12 +260,6 @@ CPU_ARCH_TYPE tta_binary_version() {
 #endif
 } // tta_binary_version
 
-__forceinline void rice_init (TTA_adapt *rice, TTAuint32 k0, TTAuint32 k1) {
-	rice->k0 = k0;
-	rice->k1 = k1;
-	rice->sum0 = shift_16[k0];
-	rice->sum1 = shift_16[k1];
-} // rice_init
 
 void compute_key_digits(void const *pstr, TTAuint32 len, TTAint8 *out) {
 	TTAint8 *cstr = (TTAint8 *) pstr;
@@ -292,22 +286,45 @@ void compute_key_digits(void const *pstr, TTAuint32 len, TTAint8 *out) {
 	out[7] = ((crc_hi >> 24) & 0xff);
 } // compute_key_digits
 
-//////////////////////////// TTA filter init ////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
 
-__forceinline void filter_init(TTA_fltst *fs, TTAint8 *data, TTAint32 shift) {
-	tta_memclear(fs, sizeof(TTA_fltst));
-	fs->shift = shift;
-	fs->round = 1 << (shift - 1);
-	fs->qm[0] = data[0];
-	fs->qm[1] = data[1];
-	fs->qm[2] = data[2];
-	fs->qm[3] = data[3];
-	fs->qm[4] = data[4];
-	fs->qm[5] = data[5];
-	fs->qm[6] = data[6];
-	fs->qm[7] = data[7];
-} // filter_init
+codec::codec() {}
+codec::~codec() {}
+
+void codec::init(TTAint8 *data, TTAint32 shift, TTAuint32 k0, TTAuint32 k1) {
+	tta_memclear(&m_fltst, sizeof(TTA_fltst));
+	m_fltst.shift = shift;
+	m_fltst.round = 1 << (shift - 1);
+	m_fltst.qm[0] = data[0];
+	m_fltst.qm[1] = data[1];
+	m_fltst.qm[2] = data[2];
+	m_fltst.qm[3] = data[3];
+	m_fltst.qm[4] = data[4];
+	m_fltst.qm[5] = data[5];
+	m_fltst.qm[6] = data[6];
+	m_fltst.qm[7] = data[7];
+	m_adapt.k0 = k0;
+	m_adapt.k1 = k1;
+	m_adapt.sum0 = shift_16[k0];
+	m_adapt.sum1 = shift_16[k1];
+	m_prev = 0;
+}
+
+void codec::decode(TTAint32* value) {
+	// decompress stage 1: adaptive hybrid filter
+	hybrid_filter_dec(&m_fltst, value);
+	// decompress stage 2: fixed order 1 prediction
+	*value += PREDICTOR1(m_prev, 5);
+	m_prev = *value;
+}
+
+void codec::encode(TTAint32* value) {
+	// compress stage 1: fixed order 1 prediction
+	TTAint32 temp = *value;
+	*value -= PREDICTOR1(m_prev, 5);
+	m_prev = temp;
+	// compress stage 2: adaptive hybrid filter
+	hybrid_filter_enc(&m_fltst, value);
+}
 
 fifo::fifo(fileio *io) :
 	m_pos(nullptr),
@@ -641,7 +658,7 @@ void tta_decoder::set_password(void const *pstr, TTAuint32 len) {
 
 void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
 	TTAint32 shift = flt_set[depth - 1];
-	TTA_codec *dec = decoder;
+	codec *dec = m_decoder;
 
 	if (frame >= frames) return;
 
@@ -658,12 +675,9 @@ void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
 		flen = flen_last;
 	else flen = flen_std;
 
-	// init entropy decoder
 	do {
-		filter_init(&dec->fst, data, shift);
-		rice_init(&dec->rice, 10, 10);
-		dec->prev = 0;
-	} while (++dec <= decoder_last);
+		dec->init(data, shift, 10, 10); // init entropy decoder
+	} while (++dec <= m_decoder_last);
 
 	fpos = 0;
 
@@ -722,14 +736,14 @@ void tta_decoder::init_get_info(TTA_info *info, TTAuint64 pos) {
 		throw tta_exception(TTA_MEMORY_ERROR);
 
 	seek_allowed = tta_decoder::read_seek_table();
-	decoder_last = decoder + info->nch - 1;
+	m_decoder_last = m_decoder + info->nch - 1;
 
 	frame_init(0, false);
 } // init_get_info
 
 int tta_decoder::process_stream(TTAuint8 *output, TTAuint32 out_bytes,
 	TTA_CALLBACK tta_callback) {
-	TTA_codec *dec = decoder;
+	codec *dec = m_decoder;
 	TTAuint8 *ptr = output;
 	TTAint32 cache[MAX_NCH];
 	TTAint32 *cp = cache;
@@ -739,22 +753,17 @@ int tta_decoder::process_stream(TTAuint8 *output, TTAuint32 out_bytes,
 
 	while (fpos < flen
 		&& ptr < output + out_bytes) {
-		value = m_fifo.get_value(&dec->rice);
+		value = m_fifo.get_value(&dec->m_adapt);
 
-		// decompress stage 1: adaptive hybrid filter
-		hybrid_filter_dec(&dec->fst, &value);
+		dec->decode(&value);
 
-		// decompress stage 2: fixed order 1 prediction
-		value += PREDICTOR1(dec->prev, 5);
-		dec->prev = value;
-
-		if (dec < decoder_last) {
+		if (dec < m_decoder_last) {
 			*cp++ = value;
 			dec++;
 		} else {
 			*cp = value;
 
-			if (decoder_last == decoder) {
+			if (m_decoder_last == m_decoder) {
 				WRITE_BUFFER(cp, ptr, depth);
 			} else {
 				end = cp;
@@ -776,7 +785,7 @@ int tta_decoder::process_stream(TTAuint8 *output, TTAuint32 out_bytes,
 			cp = cache;
 			fpos++;
 			ret++;
-			dec = decoder;
+			dec = m_decoder;
 		}
 
 		if (fpos == flen) {
@@ -805,7 +814,7 @@ int tta_decoder::process_stream(TTAuint8 *output, TTAuint32 out_bytes,
 
 int tta_decoder::process_frame(TTAuint32 in_bytes, TTAuint8 *output,
 	TTAuint32 out_bytes) {
-	TTA_codec *dec = decoder;
+	codec *dec = m_decoder;
 	TTAuint8 *ptr = output;
 	TTAint32 cache[MAX_NCH];
 	TTAint32 *cp = cache;
@@ -815,22 +824,17 @@ int tta_decoder::process_frame(TTAuint32 in_bytes, TTAuint8 *output,
 
 	while (m_fifo.count() < in_bytes
 		&& ptr < output + out_bytes) {
-		value = m_fifo.get_value(&dec->rice);
+		value = m_fifo.get_value(&dec->m_adapt);
 
-		// decompress stage 1: adaptive hybrid filter
-		hybrid_filter_dec(&dec->fst, &value);
+		dec->decode(&value);
 
-		// decompress stage 2: fixed order 1 prediction
-		value += PREDICTOR1(dec->prev, 5);
-		dec->prev = value;
-
-		if (dec < decoder_last) {
+		if (dec < m_decoder_last) {
 			*cp++ = value;
 			dec++;
 		} else {
 			*cp = value;
 
-			if (decoder_last == decoder) {
+			if (m_decoder_last == m_decoder) {
 				WRITE_BUFFER(cp, ptr, depth);
 			} else {
 				end = cp;
@@ -853,7 +857,7 @@ int tta_decoder::process_frame(TTAuint32 in_bytes, TTAuint8 *output,
 			cp = cache;
 			fpos++;
 			ret++;
-			dec = decoder;
+			dec = m_decoder;
 		}
 
 		if (fpos == flen ||
@@ -912,7 +916,7 @@ void tta_encoder::set_password(void const *pstr, TTAuint32 len) {
 
 void tta_encoder::frame_init(TTAuint32 frame) {
 	TTAint32 shift = flt_set[depth - 1];
-	TTA_codec *enc = encoder;
+	codec *enc = m_encoder;
 
 	if (frame >= frames) return;
 
@@ -922,12 +926,12 @@ void tta_encoder::frame_init(TTAuint32 frame) {
 		flen = flen_last;
 	else flen = flen_std;
 
-	// init entropy encoder
 	do {
-		filter_init(&enc->fst, data, shift);
-		rice_init(&enc->rice, 10, 10);
-		enc->prev = 0;
-	} while (++enc <= encoder_last);
+		enc->init(data, shift, 10, 10); // init entropy encoder
+		// filter_init(&enc->m_fltst, data, shift);
+		// rice_init(&enc->m_adapt, 10, 10);
+		// enc->m_prev = 0;
+	} while (++enc <= m_encoder_last);
 
 	fpos = 0;
 
@@ -971,7 +975,7 @@ void tta_encoder::init_set_info(TTA_info *info, TTAuint64 pos) {
 
 	m_fifo.writer_skip_bytes((frames + 1) * 4);
 
-	encoder_last = encoder + info->nch - 1;
+	m_encoder_last = m_encoder + info->nch - 1;
 	shift_bits = (4 - depth) << 3;
 
 	frame_init(0);
@@ -984,7 +988,7 @@ void tta_encoder::finalize() {
 
 void tta_encoder::process_stream(TTAuint8 *input, TTAuint32 in_bytes,
 	TTA_CALLBACK tta_callback) {
-	TTA_codec *enc = encoder;
+	codec *enc = m_encoder;
 	TTAuint8 *ptr = input;
 	TTAuint8 *pend = input + in_bytes;
 	TTAint32 curr, next, temp;
@@ -1003,26 +1007,20 @@ void tta_encoder::process_stream(TTAuint8 *input, TTAuint32 in_bytes,
 		}
 
 		// transform data
-		if (encoder_last != encoder) {
-			if (enc < encoder_last) {
+		if (m_encoder_last != m_encoder) {
+			if (enc < m_encoder_last) {
 				curr = res = next - curr;
 			} else curr -= res / 2;
 		}
 
-		// compress stage 1: fixed order 1 prediction
-		temp = curr;
-		curr -= PREDICTOR1(enc->prev, 5);
-		enc->prev = temp;
+		enc->encode(&curr);
 
-		// compress stage 2: adaptive hybrid filter
-		hybrid_filter_enc(&enc->fst, &curr);
+		m_fifo.put_value(&enc->m_adapt, curr);
 
-		m_fifo.put_value(&enc->rice, curr);
-
-		if (enc < encoder_last) {
+		if (enc < m_encoder_last) {
 			enc++;
 		} else {
-			enc = encoder;
+			enc = m_encoder;
 			fpos++;
 		}
 
@@ -1041,7 +1039,7 @@ void tta_encoder::process_stream(TTAuint8 *input, TTAuint32 in_bytes,
 } // process_stream
 
 void tta_encoder::process_frame(TTAuint8 *input, TTAuint32 in_bytes) {
-	TTA_codec *enc = encoder;
+	codec *enc = m_encoder;
 	TTAuint8 *ptr = input;
 	TTAuint8 *pend = input + in_bytes;
 	TTAint32 curr, next, temp;
@@ -1060,26 +1058,20 @@ void tta_encoder::process_frame(TTAuint8 *input, TTAuint32 in_bytes) {
 		}
 
 		// transform data
-		if (encoder_last != encoder) {
-			if (enc < encoder_last) {
+		if (m_encoder_last != m_encoder) {
+			if (enc < m_encoder_last) {
 				curr = res = next - curr;
 			} else curr -= res / 2;
 		}
 
-		// compress stage 1: fixed order 1 prediction
-		temp = curr;
-		curr -= PREDICTOR1(enc->prev, 5);
-		enc->prev = temp;
+		enc->encode(&curr);
 
-		// compress stage 2: adaptive hybrid filter
-		hybrid_filter_enc(&enc->fst, &curr);
+		m_fifo.put_value(&enc->m_adapt, curr);
 
-		m_fifo.put_value(&enc->rice, curr);
-
-		if (enc < encoder_last) {
+		if (enc < m_encoder_last) {
 			enc++;
 		} else {
-			enc = encoder;
+			enc = m_encoder;
 			fpos++;
 		}
 
