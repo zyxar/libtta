@@ -424,7 +424,7 @@ done:
 /////////////////////////////// Decompress //////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-int decompress(HANDLE infile, HANDLE outfile, void const *passwd, int pwlen) {
+int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	tta_decoder *TTA;
 	void *aligned_decoder;
 	WAVE_hdr wave_hdr;
@@ -438,11 +438,8 @@ int decompress(HANDLE infile, HANDLE outfile, void const *passwd, int pwlen) {
 	aligned_decoder = tta_malloc(sizeof(tta_decoder));
 	TTA = new(aligned_decoder)tta_decoder(&io);
 
-	if (passwd && pwlen)
-		TTA->set_password(passwd, pwlen);
-
 	try {
-		TTA->init_get_info(&info, 0);
+		TTA->init(&info, 0, password);
 	} catch (tta_exception& ex) {
 		tta_strerror(ex.code());
 		goto done;
@@ -508,6 +505,7 @@ int tta_main(int argc, TTAwchar **argv) {
 	HANDLE infile = INVALID_HANDLE_VALUE;
 	HANDLE outfile = INVALID_HANDLE_VALUE;
 	HANDLE tmpfile = INVALID_HANDLE_VALUE;
+	std::string password;
 	TTAuint8 *pwstr = NULL;
 	TTAuint32 start, end;
 	int act = 0;
@@ -563,6 +561,7 @@ int tta_main(int argc, TTAwchar **argv) {
 				tta_strerror(TTA_MEMORY_ERROR);
 				goto done;
 			}
+			password.assign(pwstr, pwstr+pwlen);
 			break;
 		case 'b': // blindly mode
 			if (act == 2) {
@@ -618,7 +617,7 @@ int tta_main(int argc, TTAwchar **argv) {
 		break;
 	case 2:
 		tta_print("\rDecoding: \"%s\" to \"%s\"\n", fname_in, fname_out);
-		ret = decompress(infile, outfile, pwstr, pwlen);
+		ret = decompress(infile, outfile, password);
 		break;
 	}
 

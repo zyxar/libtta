@@ -16,7 +16,6 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h> 
 #include <stdexcept>
 
@@ -31,6 +30,8 @@
 #include <windows.h>
 #include <stdexcept>
 #endif
+
+#include <string>
 
 #define MAX_DEPTH 3
 #define MAX_BPS (MAX_DEPTH*8)
@@ -223,8 +224,7 @@ namespace tta
 		explicit tta_decoder(fileio *io);
 		virtual ~tta_decoder();
 
-		void init_get_info(TTA_info *info, TTAuint64 pos);
-		void set_password(void const *pstr, TTAuint32 len);
+		void init(TTA_info *info, TTAuint64 pos, const std::string& password);
 		void frame_reset(TTAuint32 frame, fileio *io);
 		int process_stream(TTAuint8 *output, TTAuint32 out_bytes, TTA_CALLBACK tta_callback=NULL);
 		int process_frame(TTAuint32 in_bytes, TTAuint8 *output, TTAuint32 out_bytes);
@@ -236,7 +236,6 @@ namespace tta
 		TTAint8 data[8];	// decoder initialization data
 		fifo m_fifo;
 		codec *m_decoder_last;
-		bool password_set;	// password protection flag
 		TTAuint64 *seek_table; // the playing position table
 		TTAuint32 format;	// tta data format
 		TTAuint32 rate;	// bitrate (kbps)

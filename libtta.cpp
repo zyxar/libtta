@@ -651,11 +651,6 @@ bool tta_decoder::read_seek_table() {
 	return true;
 } // read_seek_table
 
-void tta_decoder::set_password(void const *pstr, TTAuint32 len) {
-	compute_key_digits(pstr, len, data);
-	password_set = true;
-} // set_password
-
 void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
 	TTAint32 shift = flt_set[depth - 1];
 	codec *dec = m_decoder;
@@ -700,7 +695,7 @@ void tta_decoder::set_position(TTAuint32 seconds, TTAuint32 *new_pos) {
 	frame_init(frame, true);
 } // set_position
 
-void tta_decoder::init_get_info(TTA_info *info, TTAuint64 pos) {
+void tta_decoder::init(TTA_info *info, TTAuint64 pos, const std::string& password) {
 	// set start position if required
 	if (pos && m_fifo.io()->Seek(pos) < 0)
 		throw tta_exception(TTA_SEEK_ERROR);
@@ -717,8 +712,9 @@ void tta_decoder::init_get_info(TTA_info *info, TTAuint64 pos) {
 
 	// check for required data is present
 	if (info->format == TTA_FORMAT_ENCRYPTED) {
-		if (!password_set)
+		if (password == "")
 			throw tta_exception(TTA_PASSWORD_ERROR);
+		compute_key_digits(password.c_str(),  password.size(), data); // set password
 	}
 
 	offset = pos; // size of headers
@@ -735,11 +731,11 @@ void tta_decoder::init_get_info(TTA_info *info, TTAuint64 pos) {
 	if (seek_table == NULL)
 		throw tta_exception(TTA_MEMORY_ERROR);
 
-	seek_allowed = tta_decoder::read_seek_table();
+	seek_allowed = read_seek_table();
 	m_decoder_last = m_decoder + info->nch - 1;
 
 	frame_init(0, false);
-} // init_get_info
+} // init
 
 int tta_decoder::process_stream(TTAuint8 *output, TTAuint32 out_bytes,
 	TTA_CALLBACK tta_callback) {
@@ -878,7 +874,7 @@ int tta_decoder::process_frame(TTAuint32 in_bytes, TTAuint8 *output,
 
 TTAuint32 tta_decoder::get_rate() { return rate; }
 
-tta_decoder::tta_decoder(fileio *io) : seek_allowed(false), m_fifo(io), password_set(false), seek_table(nullptr) {
+tta_decoder::tta_decoder(fileio *io) : seek_allowed(false), m_fifo(io), seek_table(nullptr) {
 	tta_memclear(data, 8);
 } // tta_decoder
 
