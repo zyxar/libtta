@@ -324,7 +324,7 @@ int test_libtta_compatibility() {
 //////////////////////////////// Compress ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, void const *passwd, int pwlen, int format) {
+int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& password) {
 	tta_encoder *TTA;
 	void *aligned_encoder;
 	TTAuint32 data_size;
@@ -358,10 +358,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, void const *passwd, 
 	info.nch = wave_hdr.num_channels;
 	info.bps = wave_hdr.bits_per_sample;
 	info.sps = wave_hdr.sample_rate;
-	info.format = format;
-
-	if (info.format == TTA_FORMAT_ENCRYPTED)
-		TTA->set_password(passwd, pwlen);
+	// info.format = TTA_FORMAT_SIMPLE OR TTA_FORMAT_ENCRYPTED; // ignore; set by init() depending on password
 
 	buf_size = PCM_BUFFER_LENGTH * smp_size;
 
@@ -392,7 +389,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, void const *passwd, 
 	info.samples = data_size / smp_size;
 
 	try {
-		TTA->init_set_info(&info, 0);
+		TTA->init(&info, 0, password);
 
 		while (data_size > 0) {
 			buf_size = (buf_size < data_size) ? buf_size : data_size;
@@ -511,7 +508,6 @@ int tta_main(int argc, TTAwchar **argv) {
 	int act = 0;
 	int pwlen = 0;
 	int blind = 0;
-	int format = TTA_FORMAT_SIMPLE;
 	int ret = -1;
 	char c;
 
@@ -554,7 +550,6 @@ int tta_main(int argc, TTAwchar **argv) {
 			act = 2;
 			break;
 		case 'p': // password protection
-			format = TTA_FORMAT_ENCRYPTED;
 			pwlen = tta_strlen(optarg);
 			pwstr = convert_password(optarg, &pwlen);
 			if (pwstr == NULL) {
@@ -609,7 +604,7 @@ int tta_main(int argc, TTAwchar **argv) {
 				goto done;
 			} else tta_print("\rTempfile: \"%s\"\n", fname_tmp);
 		}
-		ret = compress(infile, outfile, tmpfile, pwstr, pwlen, format);
+		ret = compress(infile, outfile, tmpfile, password);
 		if (blind && tmpfile != INVALID_HANDLE_VALUE) {
 			tta_close(tmpfile);
 			tta_unlink(fname_tmp);

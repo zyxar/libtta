@@ -906,10 +906,6 @@ void tta_encoder::write_seek_table() {
 	m_fifo.writer_done();
 } // write_seek_table
 
-void tta_encoder::set_password(void const *pstr, TTAuint32 len) {
-	compute_key_digits(pstr, len, data);
-} // set_password
-
 void tta_encoder::frame_init(TTAuint32 frame) {
 	TTAint32 shift = flt_set[depth - 1];
 	codec *enc = m_encoder;
@@ -940,7 +936,7 @@ void tta_encoder::frame_reset(TTAuint32 frame, fileio *io) {
 	frame_init(frame);
 } // frame_reset
 
-void tta_encoder::init_set_info(TTA_info *info, TTAuint64 pos) {
+void tta_encoder::init(TTA_info *info, TTAuint64 pos, const std::string& password) {
 	// check for supported formats
 	if (info->format > 2 ||
 		info->bps < MIN_BPS ||
@@ -951,6 +947,13 @@ void tta_encoder::init_set_info(TTA_info *info, TTAuint64 pos) {
 	// set start position if required
 	if (pos && m_fifo.io()->Seek(pos) < 0)
 		throw tta_exception(TTA_SEEK_ERROR);
+
+	if (password == "") {
+		info->format = TTA_FORMAT_SIMPLE;
+	} else {
+		info->format = TTA_FORMAT_ENCRYPTED;
+		compute_key_digits(password.c_str(),  password.size(), data); // set password
+	}
 
 	m_fifo.writer_start();
 	pos += m_fifo.write_tta_header(info);

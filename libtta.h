@@ -258,8 +258,7 @@ namespace tta
 		explicit tta_encoder(fileio *io);
 		virtual ~tta_encoder();
 
-		void init_set_info(TTA_info *info, TTAuint64 pos);
-		void set_password(void const *pstr, TTAuint32 len);
+		void init(TTA_info *info, TTAuint64 pos, const std::string& password);
 		void frame_reset(TTAuint32 frame, fileio *io);
 		void process_stream(TTAuint8 *input, TTAuint32 in_bytes, TTA_CALLBACK tta_callback=NULL);
 		void process_frame(TTAuint8 *input, TTAuint32 in_bytes);
