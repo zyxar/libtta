@@ -12,6 +12,7 @@
 #include "libtta.h"
 #include "config.h"
 #include "filter.h"
+#include <bit>
 
 using namespace tta;
 
@@ -261,10 +262,10 @@ CPU_ARCH_TYPE tta_binary_version() {
 } // tta_binary_version
 
 
-void compute_key_digits(void const *pstr, TTAuint32 len, TTAint8 *out) {
+void compute_key_digits(void const *pstr, TTAuint32 len, TTAuint64* out) {
 	TTAint8 *cstr = (TTAint8 *) pstr;
-	TTAuint32 crc_lo = 0xffffffff;
-	TTAuint32 crc_hi = 0xffffffff;
+	TTAuint32 crc_lo = UINT32_MAX;
+	TTAuint32 crc_hi = UINT32_MAX;
 
 	while (len--) {
 		TTAuint32 tab_index = ((crc_hi >> 24) ^ *cstr++) & 0xff;
@@ -272,18 +273,20 @@ void compute_key_digits(void const *pstr, TTAuint32 len, TTAint8 *out) {
 		crc_lo = crc64_table_lo[tab_index] ^ (crc_lo << 8);
 	}
 
-	crc_lo ^= 0xffffffff;
-	crc_hi ^= 0xffffffff;
+	crc_lo ^= UINT32_MAX;
+	crc_hi ^= UINT32_MAX;
 
-	out[0] = ((crc_lo) & 0xff);
-	out[1] = ((crc_lo >> 8) & 0xff);
-	out[2] = ((crc_lo >> 16) & 0xff);
-	out[3] = ((crc_lo >> 24) & 0xff);
-
-	out[4] = ((crc_hi) & 0xff);
-	out[5] = ((crc_hi >> 8) & 0xff);
-	out[6] = ((crc_hi >> 16) & 0xff);
-	out[7] = ((crc_hi >> 24) & 0xff);
+	if constexpr (std::endian::native == std::endian::big) {
+		crc_lo = ((TTAuint32)((((TTAuint32)(crc_lo) & 0xff000000U) >> 24) | \
+	        (((TTAuint32)(crc_lo) & 0x00ff0000U) >>  8) | \
+	        (((TTAuint32)(crc_lo) & 0x0000ff00U) <<  8) | \
+	        (((TTAuint32)(crc_lo) & 0x000000ffU) << 24)));
+		crc_hi = ((TTAuint32)((((TTAuint32)(crc_hi) & 0xff000000U) >> 24) | \
+	        (((TTAuint32)(crc_hi) & 0x00ff0000U) >>  8) | \
+	        (((TTAuint32)(crc_hi) & 0x0000ff00U) <<  8) | \
+	        (((TTAuint32)(crc_hi) & 0x000000ffU) << 24)));
+	}
+	*out = (((TTAuint64) crc_hi) << 32) | ((TTAuint64) crc_lo);
 } // compute_key_digits
 
 
@@ -671,7 +674,7 @@ void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
 	else flen = flen_std;
 
 	do {
-		dec->init(data, shift, 10, 10); // init entropy decoder
+		dec->init(data.bytes, shift, 10, 10); // init entropy decoder
 	} while (++dec <= m_decoder_last);
 
 	fpos = 0;
@@ -714,7 +717,7 @@ void tta_decoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 	if (info->format == TTA_FORMAT_ENCRYPTED) {
 		if (password == "")
 			throw tta_exception(TTA_PASSWORD_ERROR);
-		compute_key_digits(password.c_str(),  password.size(), data); // set password
+		compute_key_digits(password.c_str(),  password.size(), &data.all); // set password
 	}
 
 	offset = pos; // size of headers
@@ -875,7 +878,7 @@ int tta_decoder::process_frame(TTAuint32 in_bytes, TTAuint8 *output,
 TTAuint32 tta_decoder::get_rate() { return rate; }
 
 tta_decoder::tta_decoder(fileio *io) : seek_allowed(false), m_bufio(io), seek_table(nullptr) {
-	tta_memclear(data, 8);
+	data.all = 0;
 } // tta_decoder
 
 tta_decoder::~tta_decoder() {
@@ -919,10 +922,7 @@ void tta_encoder::frame_init(TTAuint32 frame) {
 	else flen = flen_std;
 
 	do {
-		enc->init(data, shift, 10, 10); // init entropy encoder
-		// filter_init(&enc->m_fltst, data, shift);
-		// rice_init(&enc->m_adapt, 10, 10);
-		// enc->m_prev = 0;
+		enc->init(data.bytes, shift, 10, 10); // init entropy encoder
 	} while (++enc <= m_encoder_last);
 
 	fpos = 0;
@@ -952,7 +952,7 @@ void tta_encoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 		info->format = TTA_FORMAT_SIMPLE;
 	} else {
 		info->format = TTA_FORMAT_ENCRYPTED;
-		compute_key_digits(password.c_str(),  password.size(), data); // set password
+		compute_key_digits(password.c_str(),  password.size(), &data.all); // set password
 	}
 
 	m_bufio.writer_start();
@@ -1088,7 +1088,7 @@ void tta_encoder::process_frame(TTAuint8 *input, TTAuint32 in_bytes) {
 TTAuint32 tta_encoder::get_rate() { return rate; }
 
 tta_encoder::tta_encoder(fileio *io) : m_bufio(io), seek_table(nullptr) {
-	tta_memclear(data, 8);
+	data.all = 0;
 } // tta_encoder
 
 tta_encoder::~tta_encoder() {

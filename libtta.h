@@ -233,7 +233,7 @@ namespace tta
 
 	protected:
 		codec m_decoder[MAX_NCH]; // decoder (1 per channel)
-		TTAint8 data[8];	// decoder initialization data
+		union{TTAint8 bytes[8];TTAuint64 all;} data; // decoder initialization data
 		bufio m_bufio;
 		codec *m_decoder_last;
 		TTAuint64 *seek_table; // the playing position table
@@ -267,7 +267,7 @@ namespace tta
 
 	protected:
 		codec m_encoder[MAX_NCH]; // encoder (1 per channel)
-		TTAint8 data[8];	// encoder initialization data
+		union{TTAint8 bytes[8];TTAuint64 all;} data; // encoder initialization data
 		bufio m_bufio;
 		codec *m_encoder_last;
 		TTAuint64 *seek_table; // the playing position table
