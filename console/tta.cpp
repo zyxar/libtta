@@ -260,9 +260,9 @@ public:
 	tta_file_io(HANDLE handle);
 	~tta_file_io();
 
-	TTAint32 Read(TTAuint8 *buffer, TTAuint32 size);
-	TTAint32 Write(TTAuint8 *buffer, TTAuint32 size);
-	TTAint64 Seek(TTAint64 offset);
+	TTAint32 Read(TTAuint8 *buffer, TTAuint32 size) override;
+	TTAint32 Write(TTAuint8 *buffer, TTAuint32 size) override;
+	TTAint64 Seek(TTAint64 offset) override;
 };
 
 tta_file_io::tta_file_io(HANDLE handle) : m_handle(handle) {}

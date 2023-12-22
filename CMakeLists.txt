@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
-project               (tta VERSION 2.3 LANGUAGES CXX)
+project               (tta VERSION 2.4 LANGUAGES CXX)
 set                   (CMAKE_BUILD_TYPE Release)
 set                   (CMAKE_EXPORT_COMPILE_COMMANDS ON)
-# set                   (CMAKE_CXX_STANDARD 11)
+set                   (CMAKE_CXX_STANDARD 20)
 
 add_compile_options   (-Wall -Wpedantic -O2 -funroll-loops -fomit-frame-pointer)
 
