@@ -174,7 +174,7 @@ namespace tta
 		virtual TTAint64 Seek(TTAint64 offset) = 0;
 	};
 
-	class TTA_ALIGNED(16) fifo
+	class TTA_ALIGNED(16) bufio
 	{
 	private:
 		TTAuint8 m_buffer[TTA_FIFO_BUFFER_SIZE];
@@ -185,8 +185,8 @@ namespace tta
 		TTAuint32 m_count;
 		fileio *m_io;
 	public:
-		fifo(fileio *io);
-		~fifo();
+		bufio(fileio *io);
+		~bufio();
 
 		void io(fileio* io);
 		fileio* io() const;
@@ -234,7 +234,7 @@ namespace tta
 	protected:
 		codec m_decoder[MAX_NCH]; // decoder (1 per channel)
 		TTAint8 data[8];	// decoder initialization data
-		fifo m_fifo;
+		bufio m_bufio;
 		codec *m_decoder_last;
 		TTAuint64 *seek_table; // the playing position table
 		TTAuint32 format;	// tta data format
@@ -268,7 +268,7 @@ namespace tta
 	protected:
 		codec m_encoder[MAX_NCH]; // encoder (1 per channel)
 		TTAint8 data[8];	// encoder initialization data
-		fifo m_fifo;
+		bufio m_bufio;
 		codec *m_encoder_last;
 		TTAuint64 *seek_table; // the playing position table
 		TTAuint32 format;	// tta data format
