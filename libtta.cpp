@@ -14,8 +14,6 @@
 #include "filter.h"
 #include <bit>
 
-using namespace tta;
-
 /////////////////////////////// portability /////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
@@ -41,6 +39,8 @@ using namespace tta;
 #define tta_malloc(__length) _aligned_malloc(__length, 16)
 #define tta_free(__dest) _aligned_free(__dest)
 #endif
+
+namespace tta {
 
 //////////////////////// constants and definitions //////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -245,7 +245,7 @@ const TTAint32 flt_set[3] = {10, 9, 10};
 /////////////////////////// TTA common functions ////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-CPU_ARCH_TYPE tta_binary_version() {
+CPU_ARCH_TYPE binary_version() {
 #if defined(CPU_ARM) && defined(ENABLE_ASM)
 	return CPU_ARCH_ARM;
 #elif defined(CPU_X86) && defined(ENABLE_AVX)
@@ -259,7 +259,7 @@ CPU_ARCH_TYPE tta_binary_version() {
 #else
 	return CPU_ARCH_UNDEFINED;
 #endif
-} // tta_binary_version
+} // binary_version
 
 
 void compute_key_digits(void const *pstr, TTAuint32 len, TTAuint64* out) {
@@ -357,7 +357,7 @@ void bufio::reset() {
 TTAuint8 bufio::read_byte() {
 	if (m_pos == m_buffer+TTA_FIFO_BUFFER_SIZE) {
 		if (!m_io->Read(m_buffer, TTA_FIFO_BUFFER_SIZE))
-			throw tta_exception(TTA_READ_ERROR);
+			throw exception(READ_ERROR);
 		m_pos = m_buffer;
 	}
 	// update crc32 and statistics
@@ -427,7 +427,7 @@ TTAuint32 bufio::read_tta_header(TTA_info *info) {
 	if ('T' != read_byte() ||
 		'T' != read_byte() ||
 		'A' != read_byte() ||
-		'1' != read_byte()) throw tta_exception(TTA_FORMAT_ERROR);
+		'1' != read_byte()) throw exception(FORMAT_ERROR);
 
 	info->format = read_uint16();
 	info->nch = read_uint16();
@@ -436,7 +436,7 @@ TTAuint32 bufio::read_tta_header(TTA_info *info) {
 	info->samples = read_uint32();
 
 	if (read_crc32())
-		throw tta_exception(TTA_FILE_ERROR);
+		throw exception(FILE_ERROR);
 
 	size += 22; // sizeof TTA header
 	return size;
@@ -530,7 +530,7 @@ void bufio::writer_done() {
 	TTAint32 buffer_size = (TTAint32)(m_pos - m_buffer);
 	if (buffer_size) {
 		if (m_io->Write(m_buffer, buffer_size) != buffer_size)
-			throw tta_exception(TTA_WRITE_ERROR);
+			throw exception(WRITE_ERROR);
 		m_pos = m_buffer;
 	}
 }
@@ -538,7 +538,7 @@ void bufio::writer_done() {
 void bufio::write_byte(TTAuint32 value) {
 	if (m_pos == m_buffer+TTA_FIFO_BUFFER_SIZE) {
 		if (m_io->Write(m_buffer, TTA_FIFO_BUFFER_SIZE) != TTA_FIFO_BUFFER_SIZE)
-			throw tta_exception(TTA_WRITE_ERROR);
+			throw exception(WRITE_ERROR);
 		m_pos = m_buffer;
 	}
 	// update crc32 and statistics
@@ -665,7 +665,7 @@ void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
 	if (seek_needed && seek_allowed) {
 		TTAuint64 pos = seek_table[fnum];
 		if (pos && m_bufio.io()->Seek(pos) < 0)
-			throw tta_exception(TTA_SEEK_ERROR);
+			throw exception(SEEK_ERROR);
 		m_bufio.reader_start();
 	}
 
@@ -693,7 +693,7 @@ void tta_decoder::set_position(TTAuint32 seconds, TTAuint32 *new_pos) {
 	*new_pos = MUL_FRAME_TIME(frame);
 
 	if (!seek_allowed || frame >= frames)
-		throw tta_exception(TTA_SEEK_ERROR);
+		throw exception(SEEK_ERROR);
 
 	frame_init(frame, true);
 } // set_position
@@ -701,7 +701,7 @@ void tta_decoder::set_position(TTAuint32 seconds, TTAuint32 *new_pos) {
 void tta_decoder::init(TTA_info *info, TTAuint64 pos, const std::string& password) {
 	// set start position if required
 	if (pos && m_bufio.io()->Seek(pos) < 0)
-		throw tta_exception(TTA_SEEK_ERROR);
+		throw exception(SEEK_ERROR);
 
 	m_bufio.reader_start();
 	pos += m_bufio.read_tta_header(info);
@@ -711,12 +711,12 @@ void tta_decoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 		info->bps < MIN_BPS ||
 		info->bps > MAX_BPS ||
 		info->nch > MAX_NCH)
-		throw tta_exception(TTA_FORMAT_ERROR);
+		throw exception(FORMAT_ERROR);
 
 	// check for required data is present
-	if (info->format == TTA_FORMAT_ENCRYPTED) {
+	if (info->format == FORMAT_ENCRYPTED) {
 		if (password == "")
-			throw tta_exception(TTA_PASSWORD_ERROR);
+			throw exception(PASSWORD_ERROR);
 		compute_key_digits(password.c_str(),  password.size(), &data.all); // set password
 	}
 
@@ -732,7 +732,7 @@ void tta_decoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 	// allocate memory for seek table data
 	seek_table = (TTAuint64 *) tta_malloc(frames * sizeof(TTAuint64));
 	if (seek_table == NULL)
-		throw tta_exception(TTA_MEMORY_ERROR);
+		throw exception(MEMORY_ERROR);
 
 	seek_allowed = read_seek_table();
 	m_decoder_last = m_decoder + info->nch - 1;
@@ -741,7 +741,7 @@ void tta_decoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 } // init
 
 int tta_decoder::process_stream(TTAuint8 *output, TTAuint32 out_bytes,
-	TTA_CALLBACK tta_callback) {
+	CALLBACK callback) {
 	codec *dec = m_decoder;
 	TTAuint8 *ptr = output;
 	TTAint32 cache[MAX_NCH];
@@ -800,8 +800,8 @@ int tta_decoder::process_stream(TTAuint8 *output, TTAuint32 out_bytes,
 
 			// update dynamic info
 			rate = (m_bufio.count() << 3) / 1070;
-			if (tta_callback)
-				tta_callback(rate, fnum, frames);
+			if (callback)
+				callback(rate, fnum, frames);
 			if (fnum == frames) break;
 
 			frame_init(fnum, crc_flag);
@@ -895,7 +895,7 @@ void tta_encoder::write_seek_table() {
 		return;
 
 	if (m_bufio.io()->Seek(offset) < 0)
-		throw tta_exception(TTA_SEEK_ERROR);
+		throw exception(SEEK_ERROR);
 
 	m_bufio.writer_start();
 	m_bufio.reset();
@@ -942,16 +942,16 @@ void tta_encoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 		info->bps < MIN_BPS ||
 		info->bps > MAX_BPS ||
 		info->nch > MAX_NCH)
-		throw tta_exception(TTA_FORMAT_ERROR);
+		throw exception(FORMAT_ERROR);
 
 	// set start position if required
 	if (pos && m_bufio.io()->Seek(pos) < 0)
-		throw tta_exception(TTA_SEEK_ERROR);
+		throw exception(SEEK_ERROR);
 
 	if (password == "") {
-		info->format = TTA_FORMAT_SIMPLE;
+		info->format = FORMAT_SIMPLE;
 	} else {
-		info->format = TTA_FORMAT_ENCRYPTED;
+		info->format = FORMAT_ENCRYPTED;
 		compute_key_digits(password.c_str(),  password.size(), &data.all); // set password
 	}
 
@@ -970,7 +970,7 @@ void tta_encoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 	// allocate memory for seek table data
 	seek_table = (TTAuint64 *) tta_malloc(frames * sizeof(TTAuint64));
 	if (seek_table == NULL)
-		throw tta_exception(TTA_MEMORY_ERROR);
+		throw exception(MEMORY_ERROR);
 
 	m_bufio.writer_skip_bytes((frames + 1) * 4);
 
@@ -986,7 +986,7 @@ void tta_encoder::finalize() {
 } // finalize
 
 void tta_encoder::process_stream(TTAuint8 *input, TTAuint32 in_bytes,
-	TTA_CALLBACK tta_callback) {
+	CALLBACK callback) {
 	codec *enc = m_encoder;
 	TTAuint8 *ptr = input;
 	TTAuint8 *pend = input + in_bytes;
@@ -1029,8 +1029,8 @@ void tta_encoder::process_stream(TTAuint8 *input, TTAuint32 in_bytes,
 
 			// update dynamic info
 			rate = (m_bufio.count() << 3) / 1070;
-			if (tta_callback)
-				tta_callback(rate, fnum, frames);
+			if (callback)
+				callback(rate, fnum, frames);
 
 			frame_init(fnum);
 		}
@@ -1095,4 +1095,5 @@ tta_encoder::~tta_encoder() {
 	if (seek_table) tta_free(seek_table);
 } // ~tta_encoder
 
+}
 /* eof */

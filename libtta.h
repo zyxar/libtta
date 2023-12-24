@@ -40,7 +40,7 @@
 #define TTA_FIFO_BUFFER_SIZE 5120
 
 #ifdef __GNUC__
-#define CALLBACK
+#define STDCALL
 #define TTA_EXTERN_API __attribute__((visibility("default")))
 #define TTA_ALIGNED(n) __attribute__((aligned(n), packed))
 #define __forceinline static __inline
@@ -52,7 +52,7 @@ static __inline void *_aligned_alloc(size_t alignment, size_t size) {
 }
 #endif
 #else // MSVC
-#define CALLBACK __stdcall
+#define STDCALL __stdcall
 #define TTA_EXTERN_API __declspec(dllexport)
 #define TTA_ALIGNED(n) __declspec(align(n))
 #endif
@@ -89,35 +89,6 @@ typedef unsigned __int32 (TTAuint32);
 typedef unsigned __int64 (TTAuint64);
 #endif
 
-// TTA audio format
-#define TTA_FORMAT_SIMPLE 1
-#define TTA_FORMAT_ENCRYPTED 2
-
-typedef enum tta_error {
-	TTA_NO_ERROR,	// no known errors found
-	TTA_OPEN_ERROR,	// can't open file
-	TTA_FORMAT_ERROR,	// not compatible file format
-	TTA_FILE_ERROR,	// file is corrupted
-	TTA_READ_ERROR,	// can't read from input file
-	TTA_WRITE_ERROR,	// can't write to output file
-	TTA_SEEK_ERROR,	// file seek error
-	TTA_MEMORY_ERROR,	// insufficient memory available
-	TTA_PASSWORD_ERROR,	// password protected file
-	TTA_NOT_SUPPORTED	// unsupported architecture
-} TTA_CODEC_STATUS;
-
-typedef enum {
-	CPU_ARCH_UNDEFINED,
-	CPU_ARCH_IX86_SSE2,
-	CPU_ARCH_IX86_SSE3,
-	CPU_ARCH_IX86_SSE4_1,
-	CPU_ARCH_IX86_SSE4_2,
-	CPU_ARCH_IX86_AVX,
-	CPU_ARCH_IX86_AVX512,
-	CPU_ARCH_ARM,
-	CPU_ARCH_AARCH64
-} CPU_ARCH_TYPE;
-
 typedef struct {
 	TTAuint32 format;	// audio format
 	TTAuint32 nch;	// number of channels
@@ -143,14 +114,43 @@ typedef struct {
 	TTAuint32 sum1;
 } TTA_ALIGNED(16) TTA_adapt;
 
-// progress callback
-typedef void (CALLBACK *TTA_CALLBACK)(TTAuint32, TTAuint32, TTAuint32);
-
-// architecture type compatibility
-TTA_EXTERN_API CPU_ARCH_TYPE tta_binary_version();
-
 namespace tta
 {
+	// TTA audio format
+	#define FORMAT_SIMPLE 1
+	#define FORMAT_ENCRYPTED 2
+
+	typedef enum {
+		NO_ERROR,	// no known errors found
+		OPEN_ERROR,	// can't open file
+		FORMAT_ERROR,	// not compatible file format
+		FILE_ERROR,	// file is corrupted
+		READ_ERROR,	// can't read from input file
+		WRITE_ERROR,	// can't write to output file
+		SEEK_ERROR,	// file seek error
+		MEMORY_ERROR,	// insufficient memory available
+		PASSWORD_ERROR,	// password protected file
+		NOT_SUPPORTED	// unsupported architecture
+	} ERROR;
+
+	typedef enum {
+		CPU_ARCH_UNDEFINED,
+		CPU_ARCH_IX86_SSE2,
+		CPU_ARCH_IX86_SSE3,
+		CPU_ARCH_IX86_SSE4_1,
+		CPU_ARCH_IX86_SSE4_2,
+		CPU_ARCH_IX86_AVX,
+		CPU_ARCH_IX86_AVX512,
+		CPU_ARCH_ARM,
+		CPU_ARCH_AARCH64
+	} CPU_ARCH_TYPE;
+
+	// progress callback
+	typedef void (STDCALL *CALLBACK)(TTAuint32, TTAuint32, TTAuint32);
+
+	// architecture type compatibility
+	TTA_EXTERN_API CPU_ARCH_TYPE binary_version();
+
 	class TTA_ALIGNED(32) codec // avx requires alignment of 32 bytes (for fst)
 	{
 	public:
@@ -227,7 +227,7 @@ namespace tta
 
 		void init(TTA_info *info, TTAuint64 pos, const std::string& password);
 		void frame_reset(TTAuint32 frame, fileio *io);
-		int process_stream(TTAuint8 *output, TTAuint32 out_bytes, TTA_CALLBACK tta_callback=NULL);
+		int process_stream(TTAuint8 *output, TTAuint32 out_bytes, CALLBACK tta_callback=NULL);
 		int process_frame(TTAuint32 in_bytes, TTAuint8 *output, TTAuint32 out_bytes);
 		void set_position(TTAuint32 seconds, TTAuint32 *new_pos);
 		TTAuint32 get_rate();
@@ -261,7 +261,7 @@ namespace tta
 
 		void init(TTA_info *info, TTAuint64 pos, const std::string& password);
 		void frame_reset(TTAuint32 frame, fileio *io);
-		void process_stream(TTAuint8 *input, TTAuint32 in_bytes, TTA_CALLBACK tta_callback=NULL);
+		void process_stream(TTAuint8 *input, TTAuint32 in_bytes, CALLBACK tta_callback=NULL);
 		void process_frame(TTAuint8 *input, TTAuint32 in_bytes);
 		void finalize();
 		TTAuint32 get_rate();
@@ -289,13 +289,13 @@ namespace tta
 	}; // class tta_encoder
 
 	//////////////////////// TTA exception class //////////////////////////
-	class tta_exception : public std::exception {
-		tta_error err_code;
+	class exception : public std::exception {
+		ERROR err_code;
 
 	public:
-		explicit tta_exception(tta_error code) : err_code(code) {}
-		tta_error code() const { return err_code; }
-	}; // class tta_exception
+		explicit exception(ERROR code) : err_code(code) {}
+		ERROR code() const { return err_code; }
+	}; // class exception
 } // namespace tta
 
 #endif // _LIBTTA_H

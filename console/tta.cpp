@@ -76,17 +76,17 @@ unsigned long long tta_xgetbv(unsigned int id){
 /////////////////////////// TTA common functions ////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-void tta_strerror(TTA_CODEC_STATUS e) {
+void tta_strerror(tta::ERROR e) {
 	switch(e) {
-		case TTA_OPEN_ERROR: tta_print("\r%s: can't open file\n", myname); break;
-		case TTA_FORMAT_ERROR: tta_print("\r%s: not compatible file format\n", myname); break;
-		case TTA_FILE_ERROR: tta_print("\r%s: file is corrupted\n", myname); break;
-		case TTA_READ_ERROR: tta_print("\r%s: can't read from input file\n", myname); break;
-		case TTA_WRITE_ERROR: tta_print("\r%s: can't write to output file\n", myname); break;
-		case TTA_MEMORY_ERROR: tta_print("\r%s: insufficient memory available\n", myname); break;
-		case TTA_SEEK_ERROR: tta_print("\r%s: file seek error\n", myname); break;
-		case TTA_PASSWORD_ERROR: tta_print("\r%s: password protected file\n", myname); break;
-		case TTA_NOT_SUPPORTED: tta_print("\r%s: unsupported architecture type\n", myname); break;
+		case OPEN_ERROR: tta_print("\r%s: can't open file\n", myname); break;
+		case FORMAT_ERROR: tta_print("\r%s: not compatible file format\n", myname); break;
+		case FILE_ERROR: tta_print("\r%s: file is corrupted\n", myname); break;
+		case READ_ERROR: tta_print("\r%s: can't read from input file\n", myname); break;
+		case WRITE_ERROR: tta_print("\r%s: can't write to output file\n", myname); break;
+		case MEMORY_ERROR: tta_print("\r%s: insufficient memory available\n", myname); break;
+		case SEEK_ERROR: tta_print("\r%s: file seek error\n", myname); break;
+		case PASSWORD_ERROR: tta_print("\r%s: password protected file\n", myname); break;
+		case NOT_SUPPORTED: tta_print("\r%s: unsupported architecture type\n", myname); break;
 		default: tta_print("\rUnknown error\n"); break;
 	}
 } // tta_strerror
@@ -246,7 +246,7 @@ TTAuint8 *convert_password(const TTAwchar *src, int *len) {
 /////////////////////////////// Callbacks ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-void CALLBACK tta_callback(TTAuint32 rate, TTAuint32 fnum, TTAuint32 frames) {
+void STDCALL tta_callback(TTAuint32 rate, TTAuint32 fnum, TTAuint32 frames) {
 	TTAuint32 pcnt = (TTAuint32)(fnum * 100. / frames);
 	if (!(pcnt % 10))
 		tta_print("\rProgress: %02d%%", pcnt);
@@ -287,7 +287,7 @@ TTAint64 tta_file_io::Seek(TTAint64 offset) {
 }
 
 int test_libtta_compatibility() {
-	int ret = tta_binary_version();
+	int ret = binary_version();
 
 	if (ret == CPU_ARCH_UNDEFINED) return 0;
 
@@ -336,7 +336,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 	int ret = -1;
 
 	if (read_wav_hdr(infile, &wave_hdr, &data_size)) {
-		tta_strerror(TTA_READ_ERROR);
+		tta_strerror(READ_ERROR);
 		return -1;
 	}
 
@@ -347,7 +347,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 		(wave_hdr.num_channels > MAX_NCH) ||
 		(wave_hdr.bits_per_sample == 0) ||
 		(wave_hdr.bits_per_sample > MAX_BPS)) {
-		tta_strerror(TTA_FORMAT_ERROR);
+		tta_strerror(FORMAT_ERROR);
 		return -1;
 	}
 
@@ -365,7 +365,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 	// allocate memory for PCM buffer
 	buffer = (TTAuint8 *) tta_malloc(buf_size + 4); // +4 for READ_BUFFER macro
 	if (buffer == NULL) {
-		tta_strerror(TTA_MEMORY_ERROR);
+		tta_strerror(MEMORY_ERROR);
 		goto done;
 	}
 
@@ -373,7 +373,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 		data_size = 0;
 		while (tta_read(infile, buffer, buf_size, len) && len) {
 			if (!tta_write(tmpfile, buffer, len, res) || !res) {
-				tta_strerror(TTA_WRITE_ERROR);
+				tta_strerror(WRITE_ERROR);
 				goto done;
 			}
 			data_size += len;
@@ -395,7 +395,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 			buf_size = (buf_size < data_size) ? buf_size : data_size;
 
 			if (!tta_read(infile, buffer, buf_size, len) || !len)
-				throw tta_exception(TTA_READ_ERROR);
+				throw exception(READ_ERROR);
 
 			if (len) {
 				TTA->process_stream(buffer, len, tta_callback);
@@ -406,7 +406,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 
 		TTA->finalize();
 		ret = 0;
-	} catch (tta_exception& ex) {
+	} catch (exception& ex) {
 		tta_strerror(ex.code());
 	}
 
@@ -437,7 +437,7 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 
 	try {
 		TTA->init(&info, 0, password);
-	} catch (tta_exception& ex) {
+	} catch (exception& ex) {
 		tta_strerror(ex.code());
 		goto done;
 	}
@@ -448,7 +448,7 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	// allocate memory for PCM buffer
 	buffer = (TTAuint8 *) tta_malloc(buf_size + 4); // +4 for WRITE_BUFFER macro
 	if (buffer == NULL) {
-		tta_strerror(TTA_MEMORY_ERROR);
+		tta_strerror(MEMORY_ERROR);
 		goto done;
 	}
 
@@ -469,7 +469,7 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 
 	// Write WAVE header
 	if (write_wav_hdr(outfile, &wave_hdr, data_size)){
-		tta_strerror(TTA_WRITE_ERROR);
+		tta_strerror(WRITE_ERROR);
 		goto done;
 	}
 
@@ -478,11 +478,11 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 			len = TTA->process_stream(buffer, buf_size, tta_callback);
 			if (len) {
 				if (!tta_write(outfile, buffer, len * smp_size, res) || !res)
-					throw tta_exception(TTA_WRITE_ERROR);
+					throw exception(WRITE_ERROR);
 			} else break;
 		}
 		ret = 0;
-	} catch (tta_exception& ex) {
+	} catch (exception& ex) {
 		tta_strerror(ex.code());
 	}
 
@@ -553,7 +553,7 @@ int tta_main(int argc, TTAwchar **argv) {
 			pwlen = tta_strlen(optarg);
 			pwstr = convert_password(optarg, &pwlen);
 			if (pwstr == NULL) {
-				tta_strerror(TTA_MEMORY_ERROR);
+				tta_strerror(MEMORY_ERROR);
 				goto done;
 			}
 			password.assign(pwstr, pwstr+pwlen);
@@ -579,7 +579,7 @@ int tta_main(int argc, TTAwchar **argv) {
 		infile = STDIN_FILENO;
 	else infile = tta_open_read(fname_in);
 	if (infile == INVALID_HANDLE_VALUE) {
-		tta_strerror(TTA_OPEN_ERROR);
+		tta_strerror(OPEN_ERROR);
 		goto done;
 	}
 
@@ -587,7 +587,7 @@ int tta_main(int argc, TTAwchar **argv) {
 		outfile = STDOUT_FILENO;
 	else outfile = tta_open_write(fname_out);
 	if (outfile == INVALID_HANDLE_VALUE) {
-		tta_strerror(TTA_OPEN_ERROR);
+		tta_strerror(OPEN_ERROR);
 		goto done;
 	}
 
