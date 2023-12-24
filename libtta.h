@@ -159,7 +159,8 @@ namespace tta
 		void init(TTAint8 *data, TTAint32 shift, TTAuint32 k0, TTAuint32 k1);
 		__inline void decode(TTAint32* value);
 		__inline void encode(TTAint32* value);
-	// private:
+		TTA_adapt& adapt() { return m_adapt; }
+	private:
 		TTA_fltst m_fltst;
 		TTA_adapt m_adapt;
 		TTAint32 m_prev;
@@ -198,7 +199,7 @@ namespace tta
 		__inline TTAuint32 read_uint16();
 		__inline TTAuint32 read_uint32();
 		__inline bool read_crc32();
-		__inline TTAint32 get_value(TTA_adapt *rice);
+		__inline TTAint32 get_value(TTA_adapt& rice);
 		__inline TTAuint32 count() const;
 		TTAuint32 read_tta_header(TTA_info *info);
 		TTAuint32 write_tta_header(TTA_info *info);
@@ -208,7 +209,7 @@ namespace tta
 		__inline void write_uint16(TTAuint32 value);
 		__inline void write_uint32(TTAuint32 value);
 		__inline void write_crc32();
-		__inline void put_value(TTA_adapt *rice, TTAint32 value);
+		__inline void put_value(TTA_adapt& rice, TTAint32 value);
 		__inline void flush_bit_cache();
 
 	private:
