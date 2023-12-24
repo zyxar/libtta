@@ -23,27 +23,20 @@ function parameter. The 'iocb' structure must be initialized before use.
 Good sample code of this library usage can be found in 'console' folder of
 the source code package.
 
-	tta_decoder(TTA_io_callback *iocb);
+	tta_decoder(fileio *io);
 
-The 'init_get_info' function initializes the decoder and fills the info
-structure retrieving the data from the file header. The 'init_set_info'
-function will initialize the decoder with stream parameters from previously
-filled "info" structure.
+The 'init' function initializes the decoder and fills the info
+structure retrieving the data from the file header. 'password' should be provided
+(not a null string) when the original TTA audio file is encrypted. The encrypted 
+data will be decoded correctly only if the right password is set.
 
-	void init_get_info(TTA_info *info, TTAuint64 pos);
-	void init_set_info(TTA_info *info);
-
-The 'set_password' function can be used to decode password protected data.
-The encrypted data will be decoded correctly only if the right password is
-set.
-
-	void set_password(void const *pstr, TTAuint32 len);
+	void init(TTA_info *info, TTAuint64 pos, const std::string& password);
 
 The 'frame_reset' function is intended to reinitialize the decoder for
 reading data from new data source e.g. for decoding the frame data directly
-from the memory buffer. The 'iocb' structure must be initialized before use.
+from the memory buffer.
 
-	void frame_reset(TTAuint32 frame, TTA_io_callback *iocb);
+	void frame_reset(TTAuint32 frame, fileio *io);
 
 The 'process_stream' function can be used to get a chunk of the decompressed
 data. This function accepts requested count of samples as a parameter and
@@ -80,28 +73,24 @@ each data frame. In other cases it's better to use the tta_callback function.
 The tta_encoder class is intended for coding PCM data with into the output
 TTA file.
 
-The tta_encoder class constructor accepts the 'iocb' callbacks structure as a
-function parameter. The 'iocb' structure must be initialized before use.
+The tta_encoder class constructor accepts the 'fileio*' pointer as a
+function parameter.
 
-	tta_encoder(TTA_io_callback *iocb);
+	tta_encoder(fileio *io);
 
-The 'init_set_info' function will initialize the encoder with stream
+The 'init' function will initialize the encoder with stream
 parameters from previously filled "info" structure. The 'pos' parameter of
 this function specifies the count of bytes to skip from the beginning of the
-output file if required.
+output file if required. if 'password' is given (not a null string), the output
+data will be password protected.
 
-	void init_set_info(TTA_info *info, TTAuint64 pos);
-
-The 'set_password' function can be used to enable password protection feature
-for encoder. The output data will be password protection.
-
-	void set_password(void const *pstr, TTAuint32 len);
+	void init(TTA_info *info, TTAuint64 pos, const std::string& password);
 
 The 'frame_reset' function is intended to reinitialize the encoder for
 reading from new data source e.g. for encoding the frame data directly from
-the memory buffer. The 'iocb' structure must be initialized before use.
+the memory buffer.
 
-	void frame_reset(TTAuint32 frame, TTA_io_callback *iocb);
+	void frame_reset(TTAuint32 frame, fileio *io);
 
 The 'process_stream' function can be used to compress a chunk of the input
 data. The function accepts the chunk of PCM audio data of 'in_bytes' size
@@ -154,7 +143,7 @@ Description of the TTA error codes:
 //////// Sample for building the TTA decoder on Sigma Designs EM86XX ////////
 /////////////////////////////////////////////////////////////////////////////
 
-#include "./libtta/libtta.h"
+#include <libtta/libtta.h>
 
 using namespace std;
 using namespace tta;
@@ -169,35 +158,45 @@ typedef struct {
 	RMuint64 track_duration;
 } tta_context;
 
-typedef struct {
-	TTA_io_callback iocb;
-	RMfile f_handle;
-} TTA_io_callback_wrapper;
-
-static TTA_io_callback_wrapper iowr;
 static tta_decoder *TTA;
 static tta_context t_info;
 static RMuint32 seek_skip = 0; // count of samples to skip after seek
 
-//////////////////////// 1. Defining codec callbacks ////////////////////////
+class tta_file_io : public fileio
+{
+private:
+	HANDLE m_handle;
+public:
+	tta_file_io(HANDLE handle);
+	~tta_file_io();
 
-RMint32 CALLBACK read_callback(TTA_io_callback *io,
-	RMuint8 *buffer, RMuint32 size) {
-	TTA_io_callback_wrapper *iocb = (TTA_io_callback_wrapper *)io;
-	RMuint32 result;
-	if (RMReadFile(iocb->f_handle, buffer, size, &result) == RM_OK)
+	TTAint32 Read(TTAuint8 *buffer, TTAuint32 size) override;
+	TTAint32 Write(TTAuint8 *buffer, TTAuint32 size) override;
+	TTAint64 Seek(TTAint64 offset) override;
+};
+
+tta_file_io::tta_file_io(HANDLE handle) : m_handle(handle) {}
+tta_file_io::~tta_file_io() {}
+
+TTAint32 tta_file_io::Read(TTAuint8 *buffer, TTAuint32 size) {
+	TTAint32 result;
+	if (tta_read(m_handle, buffer, size, result))
 		return result;
 	return 0;
 }
 
-RMint64 CALLBACK seek_callback(TTA_io_callback *io, RMint64 offset) {
-	TTA_io_callback_wrapper *iocb = (TTA_io_callback_wrapper *)io;
-	if (RMSeekFile(iocb->f_handle, offset, RM_FILE_SEEK_START) == RM_OK)
-		return 0;
-	return -1;
+TTAint32 tta_file_io::Write(TTAuint8 *buffer, TTAuint32 size) {
+	TTAint32 result;
+	if (tta_write(m_handle, buffer, size, result))
+		return result;
+	return 0;
 }
 
-///////////////////////// 2. Decoder initialization /////////////////////////
+TTAint64 tta_file_io::Seek(TTAint64 offset) {
+	return tta_seek(m_handle, offset);
+}
+
+///////////////////////// 1. Decoder initialization /////////////////////////
 
 RMstatus rmtta_file_init(RMfile f_handle) {
 	TTA_info info;
@@ -206,15 +205,11 @@ RMstatus rmtta_file_init(RMfile f_handle) {
 		return RM_ERROR;
 
 	RMMemset(&t_info, 0, sizeof(tta_context));
-
-	iowr.iocb.read = &read_callback;
-	iowr.iocb.seek = &seek_callback;
-	iowr.iocb.write = NULL;
-	iowr.handle = f_handle;
+	tta_file_io io(f_handle);
 
 	try {
-		TTA = new tta_decoder((TTA_io_callback *) &iowr);
-		TTA->init_get_info(&info, 0);
+		TTA = new tta_decoder(&io);
+		TTA->init(&info, 0, "");
 	} catch (tta_exception ex) {
 		RMDBGLOG((ENABLE, "rmtta_error: %d\n", ex.code());
 		if (TTA) delete TTA; // cleanup
