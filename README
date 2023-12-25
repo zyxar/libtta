@@ -30,13 +30,13 @@ structure retrieving the data from the file header. 'password' should be provide
 (not a null string) when the original TTA audio file is encrypted. The encrypted 
 data will be decoded correctly only if the right password is set.
 
-	void init(TTA_info *info, TTAuint64 pos, const std::string& password);
+	void init(TTA_info *info, uint64_t pos, const std::string& password);
 
 The 'frame_reset' function is intended to reinitialize the decoder for
 reading data from new data source e.g. for decoding the frame data directly
 from the memory buffer.
 
-	void frame_reset(TTAuint32 frame, fileio *io);
+	void frame_reset(uint32_t frame, fileio *io);
 
 The 'process_stream' function can be used to get a chunk of the decompressed
 data. This function accepts requested count of samples as a parameter and
@@ -45,21 +45,21 @@ decoded samples is returned as a function value. The 'tta_callback' is a
 function parameter, intended for the extension of possibilities of the user
 program. It can be used to get a statistics of the decoding process.
 
-	int process_stream(TTAuint8 *output, TTAuint32 req_count,
+	int process_stream(uint8_t *output, uint32_t req_count,
 		TTA_CALLBACK tta_callback);
 
 The 'process_frame' function can be used to decode one TTA frame of
 'in_bytes' size into the 'output' buffer of 'out_bytes' size.
 
-	int process_frame(TTAuint32 in_bytes, TTAuint8 *output,
-		TTAuint32 out_bytes);
+	int process_frame(uint32_t in_bytes, uint8_t *output,
+		uint32_t out_bytes);
 
 The 'set_position' function allows to jump to different parts of the audio
 track playback. Function accepts the time position in seconds where playback
 has to start, and returns the actual time position of start of the next
 audio frame as a 'new_pos' parameter.
 
-	void set_position(TTAuint32 seconds, TTAuint32 *new_pos);
+	void set_position(uint32_t seconds, uint32_t *new_pos);
 
 The 'get_rate' function returns the dynamic bit-rate of compressed data
 stream in Kbps. This function can be used in case of separate processing of
@@ -84,13 +84,13 @@ this function specifies the count of bytes to skip from the beginning of the
 output file if required. if 'password' is given (not a null string), the output
 data will be password protected.
 
-	void init(TTA_info *info, TTAuint64 pos, const std::string& password);
+	void init(TTA_info *info, uint64_t pos, const std::string& password);
 
 The 'frame_reset' function is intended to reinitialize the encoder for
 reading from new data source e.g. for encoding the frame data directly from
 the memory buffer.
 
-	void frame_reset(TTAuint32 frame, fileio *io);
+	void frame_reset(uint32_t frame, fileio *io);
 
 The 'process_stream' function can be used to compress a chunk of the input
 data. The function accepts the chunk of PCM audio data of 'in_bytes' size
@@ -98,14 +98,14 @@ from 'input' buffer. The 'tta_callback' is a function parameter, intended for
 the extension of possibilities of the user program. It can be used to get
 a statistics of the decoding process.
 
-	void process_stream(TTAuint8 *input, TTAuint32 in_bytes,
+	void process_stream(uint8_t *input, uint32_t in_bytes,
 		TTA_CALLBACK tta_callback);
 
 The 'process_frame' function can be used to produce one TTA frame. The
 function accepts the chunk of PCM audio data of 'in_bytes' size from 'input'
 buffer.
 
-	void process_frame(TTAuint8 *input, TTAuint32 in_bytes);
+	void process_frame(uint8_t *input, uint32_t in_bytes);
 
 The 'finalize' function is intended to finalize the encoding
 process. This function must be called when you're finished encoding.
@@ -170,29 +170,29 @@ public:
 	tta_file_io(HANDLE handle);
 	~tta_file_io();
 
-	TTAint32 Read(TTAuint8 *buffer, TTAuint32 size) override;
-	TTAint32 Write(TTAuint8 *buffer, TTAuint32 size) override;
-	TTAint64 Seek(TTAint64 offset) override;
+	int32_t Read(uint8_t *buffer, uint32_t size) override;
+	int32_t Write(uint8_t *buffer, uint32_t size) override;
+	int64_t Seek(int64_t offset) override;
 };
 
 tta_file_io::tta_file_io(HANDLE handle) : m_handle(handle) {}
 tta_file_io::~tta_file_io() {}
 
-TTAint32 tta_file_io::Read(TTAuint8 *buffer, TTAuint32 size) {
-	TTAint32 result;
+int32_t tta_file_io::Read(uint8_t *buffer, uint32_t size) {
+	int32_t result;
 	if (tta_read(m_handle, buffer, size, result))
 		return result;
 	return 0;
 }
 
-TTAint32 tta_file_io::Write(TTAuint8 *buffer, TTAuint32 size) {
-	TTAint32 result;
+int32_t tta_file_io::Write(uint8_t *buffer, uint32_t size) {
+	int32_t result;
 	if (tta_write(m_handle, buffer, size, result))
 		return result;
 	return 0;
 }
 
-TTAint64 tta_file_io::Seek(TTAint64 offset) {
+int64_t tta_file_io::Seek(int64_t offset) {
 	return tta_seek(m_handle, offset);
 }
 

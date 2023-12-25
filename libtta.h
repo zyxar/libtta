@@ -60,58 +60,58 @@ static __inline void *_aligned_alloc(size_t alignment, size_t size) {
 // portability definitions
 #ifdef __GNUC__
 #ifdef CARIBBEAN
-typedef RMint8 (TTAint8);
-typedef RMint16 (TTAint16);
-typedef RMint32 (TTAint32);
-typedef RMint64 (TTAint64);
-typedef RMuint8 (TTAuint8);
-typedef RMuint16 (TTAuint16);
-typedef RMuint32 (TTAuint32);
-typedef RMuint64 (TTAuint64);
+typedef RMint8 (int8_t);
+typedef RMint16 (int16_t);
+typedef RMint32 (int32_t);
+typedef RMint64 (int64_t);
+typedef RMuint8 (uint8_t);
+typedef RMuint16 (uint16_t);
+typedef RMuint32 (uint32_t);
+typedef RMuint64 (uint64_t);
 #else // GNUC
-typedef int8_t (TTAint8);
-typedef int16_t (TTAint16);
-typedef int32_t (TTAint32);
-typedef int64_t (TTAint64);
-typedef uint8_t (TTAuint8);
-typedef uint16_t (TTAuint16);
-typedef uint32_t (TTAuint32);
-typedef uint64_t (TTAuint64);
+// typedef int8_t (int8_t);
+// typedef int16_t (int16_t);
+// typedef int32_t (int32_t);
+// typedef int64_t (int64_t);
+// typedef uint8_t (uint8_t);
+// typedef uint16_t (uint16_t);
+// typedef uint32_t (uint32_t);
+// typedef uint64_t (uint64_t);
 #endif
 #else // MSVC
-typedef __int8 (TTAint8);
-typedef __int16 (TTAint16);
-typedef __int32 (TTAint32);
-typedef __int64 (TTAint64);
-typedef unsigned __int8 (TTAuint8);
-typedef unsigned __int16 (TTAuint16);
-typedef unsigned __int32 (TTAuint32);
-typedef unsigned __int64 (TTAuint64);
+typedef __int8 (int8_t);
+typedef __int16 (int16_t);
+typedef __int32 (int32_t);
+typedef __int64 (int64_t);
+typedef unsigned __int8 (uint8_t);
+typedef unsigned __int16 (uint16_t);
+typedef unsigned __int32 (uint32_t);
+typedef unsigned __int64 (uint64_t);
 #endif
 
 typedef struct {
-	TTAuint32 format;	// audio format
-	TTAuint32 nch;	// number of channels
-	TTAuint32 bps;	// bits per sample
-	TTAuint32 sps;	// samplerate (sps)
-	TTAuint32 samples;	// data length in samples
+	uint32_t format;	// audio format
+	uint32_t nch;	// number of channels
+	uint32_t bps;	// bits per sample
+	uint32_t sps;	// samplerate (sps)
+	uint32_t samples;	// data length in samples
 } TTA_ALIGNED(16) TTA_info;
 
 typedef struct {
-	TTAint32 index;
-	TTAint32 error;
-	TTAint32 round;
-	TTAint32 shift;
-	TTAint32 qm[8];
-	TTAint32 dx[24];
-	TTAint32 dl[24];
+	int32_t index;
+	int32_t error;
+	int32_t round;
+	int32_t shift;
+	int32_t qm[8];
+	int32_t dx[24];
+	int32_t dl[24];
 } TTA_ALIGNED(16) TTA_fltst;
 
 typedef struct {
-	TTAuint32 k0;
-	TTAuint32 k1;
-	TTAuint32 sum0;
-	TTAuint32 sum1;
+	uint32_t k0;
+	uint32_t k1;
+	uint32_t sum0;
+	uint32_t sum1;
 } TTA_ALIGNED(16) TTA_adapt;
 
 namespace tta
@@ -146,7 +146,7 @@ namespace tta
 	} CPU_ARCH_TYPE;
 
 	// progress callback
-	typedef void (STDCALL *CALLBACK)(TTAuint32, TTAuint32, TTAuint32);
+	typedef void (STDCALL *CALLBACK)(uint32_t, uint32_t, uint32_t);
 
 	// architecture type compatibility
 	TTA_EXTERN_API CPU_ARCH_TYPE binary_version();
@@ -156,34 +156,34 @@ namespace tta
 	public:
 		explicit codec();
 		virtual ~codec();
-		void init(TTAint8 *data, TTAint32 shift, TTAuint32 k0, TTAuint32 k1);
-		__inline void decode(TTAint32* value);
-		__inline void encode(TTAint32* value);
+		void init(int8_t *data, int32_t shift, uint32_t k0, uint32_t k1);
+		__inline void decode(int32_t* value);
+		__inline void encode(int32_t* value);
 		TTA_adapt& adapt() { return m_adapt; }
 	private:
 		TTA_fltst m_fltst;
 		TTA_adapt m_adapt;
-		TTAint32 m_prev;
+		int32_t m_prev;
 	};
 
 	class fileio
 	{
 	public:
 		virtual ~fileio() {}
-		virtual TTAint32 Read(TTAuint8 *buffer, TTAuint32 size) = 0;
-		virtual TTAint32 Write(TTAuint8 *buffer, TTAuint32 size) = 0;
-		virtual TTAint64 Seek(TTAint64 offset) = 0;
+		virtual int32_t Read(uint8_t *buffer, uint32_t size) = 0;
+		virtual int32_t Write(uint8_t *buffer, uint32_t size) = 0;
+		virtual int64_t Seek(int64_t offset) = 0;
 	};
 
 	class TTA_ALIGNED(16) bufio
 	{
 	private:
-		TTAuint8 m_buffer[TTA_FIFO_BUFFER_SIZE];
-		TTAuint8 *m_pos;
-		TTAuint32 m_bcount; // count of bits in cache
-		TTAuint32 m_bcache; // bit cache
-		TTAuint32 m_crc;
-		TTAuint32 m_count;
+		uint8_t m_buffer[TTA_FIFO_BUFFER_SIZE];
+		uint8_t *m_pos;
+		uint32_t m_bcount; // count of bits in cache
+		uint32_t m_bcache; // bit cache
+		uint32_t m_crc;
+		uint32_t m_count;
 		fileio *m_io;
 	public:
 		bufio(fileio *io);
@@ -195,26 +195,26 @@ namespace tta
 		__inline void reset();
 		__inline void reader_start();
 		__inline void writer_start();
-		__inline TTAuint8 read_byte();
-		__inline TTAuint32 read_uint16();
-		__inline TTAuint32 read_uint32();
+		__inline uint8_t read_byte();
+		__inline uint32_t read_uint16();
+		__inline uint32_t read_uint32();
 		__inline bool read_crc32();
-		__inline TTAint32 get_value(TTA_adapt& rice);
-		__inline TTAuint32 count() const;
-		TTAuint32 read_tta_header(TTA_info *info);
-		TTAuint32 write_tta_header(TTA_info *info);
-		void writer_skip_bytes(TTAuint32 size);
+		__inline int32_t get_value(TTA_adapt& rice);
+		__inline uint32_t count() const;
+		uint32_t read_tta_header(TTA_info *info);
+		uint32_t write_tta_header(TTA_info *info);
+		void writer_skip_bytes(uint32_t size);
 		void writer_done();
-		__inline void write_byte(TTAuint32 value);
-		__inline void write_uint16(TTAuint32 value);
-		__inline void write_uint32(TTAuint32 value);
+		__inline void write_byte(uint32_t value);
+		__inline void write_uint16(uint32_t value);
+		__inline void write_uint32(uint32_t value);
 		__inline void write_crc32();
-		__inline void put_value(TTA_adapt& rice, TTAint32 value);
+		__inline void put_value(TTA_adapt& rice, int32_t value);
 		__inline void flush_bit_cache();
 
 	private:
-		void reader_skip_bytes(TTAuint32 size);
-		TTAuint32 skip_id3v2();
+		void reader_skip_bytes(uint32_t size);
+		uint32_t skip_id3v2();
 	};
 
 	/////////////////////// TTA decoder functions /////////////////////////
@@ -225,32 +225,32 @@ namespace tta
 		explicit tta_decoder(fileio *io);
 		virtual ~tta_decoder();
 
-		void init(TTA_info *info, TTAuint64 pos, const std::string& password);
-		void frame_reset(TTAuint32 frame, fileio *io);
-		int process_stream(TTAuint8 *output, TTAuint32 out_bytes, CALLBACK tta_callback=NULL);
-		int process_frame(TTAuint32 in_bytes, TTAuint8 *output, TTAuint32 out_bytes);
-		void set_position(TTAuint32 seconds, TTAuint32 *new_pos);
-		TTAuint32 get_rate();
+		void init(TTA_info *info, uint64_t pos, const std::string& password);
+		void frame_reset(uint32_t frame, fileio *io);
+		int process_stream(uint8_t *output, uint32_t out_bytes, CALLBACK tta_callback=NULL);
+		int process_frame(uint32_t in_bytes, uint8_t *output, uint32_t out_bytes);
+		void set_position(uint32_t seconds, uint32_t *new_pos);
+		uint32_t get_rate();
 
 	protected:
 		codec m_decoder[MAX_NCH]; // decoder (1 per channel)
-		union{TTAint8 bytes[8];TTAuint64 all;} data; // decoder initialization data
+		union{int8_t bytes[8];uint64_t all;} data; // decoder initialization data
 		bufio m_bufio;
 		codec *m_decoder_last;
-		TTAuint64 *seek_table; // the playing position table
-		TTAuint32 format;	// tta data format
-		TTAuint32 rate;	// bitrate (kbps)
-		TTAuint64 offset;	// data start position (header size, bytes)
-		TTAuint32 frames;	// total count of frames
-		TTAuint32 depth;	// bytes per sample
-		TTAuint32 flen_std;	// default frame length in samples
-		TTAuint32 flen_last;	// last frame length in samples
-		TTAuint32 flen;	// current frame length in samples
-		TTAuint32 fnum;	// currently playing frame index
-		TTAuint32 fpos;	// the current position in frame
+		uint64_t *seek_table; // the playing position table
+		uint32_t format;	// tta data format
+		uint32_t rate;	// bitrate (kbps)
+		uint64_t offset;	// data start position (header size, bytes)
+		uint32_t frames;	// total count of frames
+		uint32_t depth;	// bytes per sample
+		uint32_t flen_std;	// default frame length in samples
+		uint32_t flen_last;	// last frame length in samples
+		uint32_t flen;	// current frame length in samples
+		uint32_t fnum;	// currently playing frame index
+		uint32_t fpos;	// the current position in frame
 
 		bool read_seek_table();
-		void frame_init(TTAuint32 frame, bool seek_needed);
+		void frame_init(uint32_t frame, bool seek_needed);
 	}; // class tta_decoder
 
 	/////////////////////// TTA encoder functions /////////////////////////
@@ -259,33 +259,33 @@ namespace tta
 		explicit tta_encoder(fileio *io);
 		virtual ~tta_encoder();
 
-		void init(TTA_info *info, TTAuint64 pos, const std::string& password);
-		void frame_reset(TTAuint32 frame, fileio *io);
-		void process_stream(TTAuint8 *input, TTAuint32 in_bytes, CALLBACK tta_callback=NULL);
-		void process_frame(TTAuint8 *input, TTAuint32 in_bytes);
+		void init(TTA_info *info, uint64_t pos, const std::string& password);
+		void frame_reset(uint32_t frame, fileio *io);
+		void process_stream(uint8_t *input, uint32_t in_bytes, CALLBACK tta_callback=NULL);
+		void process_frame(uint8_t *input, uint32_t in_bytes);
 		void finalize();
-		TTAuint32 get_rate();
+		uint32_t get_rate();
 
 	protected:
 		codec m_encoder[MAX_NCH]; // encoder (1 per channel)
-		union{TTAint8 bytes[8];TTAuint64 all;} data; // encoder initialization data
+		union{int8_t bytes[8];uint64_t all;} data; // encoder initialization data
 		bufio m_bufio;
 		codec *m_encoder_last;
-		TTAuint64 *seek_table; // the playing position table
-		TTAuint32 format;	// tta data format
-		TTAuint32 rate;	// bitrate (kbps)
-		TTAuint64 offset;	// data start position (header size, bytes)
-		TTAuint32 frames;	// total count of frames
-		TTAuint32 depth;	// bytes per sample
-		TTAuint32 flen_std;	// default frame length in samples
-		TTAuint32 flen_last;	// last frame length in samples
-		TTAuint32 flen;	// current frame length in samples
-		TTAuint32 fnum;	// currently playing frame index
-		TTAuint32 fpos;	// the current position in frame
-		TTAuint32 shift_bits; // packing int to pcm
+		uint64_t *seek_table; // the playing position table
+		uint32_t format;	// tta data format
+		uint32_t rate;	// bitrate (kbps)
+		uint64_t offset;	// data start position (header size, bytes)
+		uint32_t frames;	// total count of frames
+		uint32_t depth;	// bytes per sample
+		uint32_t flen_std;	// default frame length in samples
+		uint32_t flen_last;	// last frame length in samples
+		uint32_t flen;	// current frame length in samples
+		uint32_t fnum;	// currently playing frame index
+		uint32_t fpos;	// the current position in frame
+		uint32_t shift_bits; // packing int to pcm
 
 		void write_seek_table();
-		void frame_init(TTAuint32 frame);
+		void frame_init(uint32_t frame);
 	}; // class tta_encoder
 
 	//////////////////////// TTA exception class //////////////////////////

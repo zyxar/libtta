@@ -31,35 +31,35 @@ using namespace tta;
 #define PCM_BUFFER_LENGTH 5120
 
 typedef struct {
-	TTAuint32 chunk_id;
-	TTAuint32 chunk_size;
-	TTAuint32 format;
-	TTAuint32 subchunk_id;
-	TTAuint32 subchunk_size;
-	TTAuint16 audio_format;
-	TTAuint16 num_channels;
-	TTAuint32 sample_rate;
-	TTAuint32 byte_rate;
-	TTAuint16 block_align;
-	TTAuint16 bits_per_sample;
+	uint32_t chunk_id;
+	uint32_t chunk_size;
+	uint32_t format;
+	uint32_t subchunk_id;
+	uint32_t subchunk_size;
+	uint16_t audio_format;
+	uint16_t num_channels;
+	uint32_t sample_rate;
+	uint32_t byte_rate;
+	uint16_t block_align;
+	uint16_t bits_per_sample;
 } WAVE_hdr;
 
 typedef struct {
-	TTAuint32 subchunk_id;
-	TTAuint32 subchunk_size;
+	uint32_t subchunk_id;
+	uint32_t subchunk_size;
 } WAVE_subchunk_hdr;
 
 typedef struct {
-	TTAuint32 f1;
-	TTAuint16 f2;
-	TTAuint16 f3;
-	TTAuint8 f4[8];
+	uint32_t f1;
+	uint16_t f2;
+	uint16_t f3;
+	uint8_t f4[8];
 } WAVE_subformat;
 
 typedef struct {
-	TTAuint16 cb_size;
-	TTAuint16 valid_bits;
-	TTAuint32 ch_mask;
+	uint16_t cb_size;
+	uint16_t valid_bits;
+	uint32_t ch_mask;
 	WAVE_subformat est;
 } WAVE_ext_hdr;
 
@@ -104,10 +104,10 @@ void usage() {
 	tta_print("Project site: http://www.true-audio.com/\n");
 } // usage
 
-int read_wav_hdr(HANDLE infile, WAVE_hdr *wave_hdr, TTAuint32 *subchunk_size) {
+int read_wav_hdr(HANDLE infile, WAVE_hdr *wave_hdr, uint32_t *subchunk_size) {
 	WAVE_subchunk_hdr subchunk_hdr;
-	TTAuint32 result;
-	TTAuint32 def_subchunk_size = 16;
+	uint32_t result;
+	uint32_t def_subchunk_size = 16;
 
 	// Read WAVE header
 	if (!tta_read(infile, wave_hdr, sizeof(WAVE_hdr), result) || !result)
@@ -125,7 +125,7 @@ int read_wav_hdr(HANDLE infile, WAVE_hdr *wave_hdr, TTAuint32 *subchunk_size) {
 
 	// Skip extra format bytes
 	if (wave_hdr->subchunk_size > def_subchunk_size) {
-		TTAuint32 extra_len = wave_hdr->subchunk_size - def_subchunk_size;
+		uint32_t extra_len = wave_hdr->subchunk_size - def_subchunk_size;
 
 		if (tta_seek(infile, extra_len) == INVALID_SET_FILE_POINTER)
 			return -1;
@@ -133,7 +133,7 @@ int read_wav_hdr(HANDLE infile, WAVE_hdr *wave_hdr, TTAuint32 *subchunk_size) {
 
 	// Skip unsupported chunks
 	while (1) {
-		TTAuint8 chunk_id[5];
+		uint8_t chunk_id[5];
 
 		if (!tta_read(infile, &subchunk_hdr, sizeof(WAVE_subchunk_hdr), result) || !result)
 			return -1;
@@ -150,8 +150,8 @@ int read_wav_hdr(HANDLE infile, WAVE_hdr *wave_hdr, TTAuint32 *subchunk_size) {
 	return 0;
 } // read_wav_hdr
 
-int write_wav_hdr(HANDLE outfile, WAVE_hdr *wave_hdr, TTAuint32 data_size) {
-	TTAuint32 result;
+int write_wav_hdr(HANDLE outfile, WAVE_hdr *wave_hdr, uint32_t data_size) {
+	uint32_t result;
 	WAVE_subchunk_hdr subchunk_hdr;
 
 	subchunk_hdr.subchunk_id = data_SIGN;
@@ -169,11 +169,11 @@ int write_wav_hdr(HANDLE outfile, WAVE_hdr *wave_hdr, TTAuint32 data_size) {
 } // write_wav_hdr
 
 #ifdef __GNUC__
-TTAuint8 *convert_password(const TTAwchar *src, int *len) {
-	TTAuint8 *dst;
+uint8_t *convert_password(const TTAwchar *src, int *len) {
+	uint8_t *dst;
 	int n;
 
-	dst = (TTAuint8*) tta_malloc(*len + 1);
+	dst = (uint8_t*) tta_malloc(*len + 1);
 	if (dst == NULL) return NULL;
 
 	for (n = 0; n != *len; ++n) {
@@ -196,11 +196,11 @@ TTAuint8 *convert_password(const TTAwchar *src, int *len) {
 } // convert_passwd
 
 #else // MSVC
-TTAuint8 *convert_password(const TTAwchar *src, int *len) {
-	TTAuint8 *dst;
+uint8_t *convert_password(const TTAwchar *src, int *len) {
+	uint8_t *dst;
 	int i, n;
 
-	dst = (TTAuint8 *) tta_malloc(*len * 6 + 1);
+	dst = (uint8_t *) tta_malloc(*len * 6 + 1);
 	if (dst == NULL) return NULL;
 
 	for (i = 0, n = 0; i != *len; ++i) {
@@ -246,8 +246,8 @@ TTAuint8 *convert_password(const TTAwchar *src, int *len) {
 /////////////////////////////// Callbacks ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-void STDCALL tta_callback(TTAuint32 rate, TTAuint32 fnum, TTAuint32 frames) {
-	TTAuint32 pcnt = (TTAuint32)(fnum * 100. / frames);
+void STDCALL tta_callback(uint32_t rate, uint32_t fnum, uint32_t frames) {
+	uint32_t pcnt = (uint32_t)(fnum * 100. / frames);
 	if (!(pcnt % 10))
 		tta_print("\rProgress: %02d%%", pcnt);
 } // tta_callback
@@ -260,29 +260,29 @@ public:
 	tta_file_io(HANDLE handle);
 	~tta_file_io();
 
-	TTAint32 Read(TTAuint8 *buffer, TTAuint32 size) override;
-	TTAint32 Write(TTAuint8 *buffer, TTAuint32 size) override;
-	TTAint64 Seek(TTAint64 offset) override;
+	int32_t Read(uint8_t *buffer, uint32_t size) override;
+	int32_t Write(uint8_t *buffer, uint32_t size) override;
+	int64_t Seek(int64_t offset) override;
 };
 
 tta_file_io::tta_file_io(HANDLE handle) : m_handle(handle) {}
 tta_file_io::~tta_file_io() {}
 
-TTAint32 tta_file_io::Read(TTAuint8 *buffer, TTAuint32 size) {
-	TTAint32 result;
+int32_t tta_file_io::Read(uint8_t *buffer, uint32_t size) {
+	int32_t result;
 	if (tta_read(m_handle, buffer, size, result))
 		return result;
 	return 0;
 }
 
-TTAint32 tta_file_io::Write(TTAuint8 *buffer, TTAuint32 size) {
-	TTAint32 result;
+int32_t tta_file_io::Write(uint8_t *buffer, uint32_t size) {
+	int32_t result;
 	if (tta_write(m_handle, buffer, size, result))
 		return result;
 	return 0;
 }
 
-TTAint64 tta_file_io::Seek(TTAint64 offset) {
+int64_t tta_file_io::Seek(int64_t offset) {
 	return tta_seek(m_handle, offset);
 }
 
@@ -327,11 +327,11 @@ int test_libtta_compatibility() {
 int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& password) {
 	tta_encoder *TTA;
 	void *aligned_encoder;
-	TTAuint32 data_size;
+	uint32_t data_size;
 	WAVE_hdr wave_hdr;
 	tta_file_io io(outfile);
-	TTAuint8 *buffer = NULL;
-	TTAuint32 buf_size, smp_size, len, res;
+	uint8_t *buffer = NULL;
+	uint32_t buf_size, smp_size, len, res;
 	TTA_info info;
 	int ret = -1;
 
@@ -363,7 +363,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 	buf_size = PCM_BUFFER_LENGTH * smp_size;
 
 	// allocate memory for PCM buffer
-	buffer = (TTAuint8 *) tta_malloc(buf_size + 4); // +4 for READ_BUFFER macro
+	buffer = (uint8_t *) tta_malloc(buf_size + 4); // +4 for READ_BUFFER macro
 	if (buffer == NULL) {
 		tta_strerror(MEMORY_ERROR);
 		goto done;
@@ -426,9 +426,9 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	void *aligned_decoder;
 	WAVE_hdr wave_hdr;
 	tta_file_io io(infile);
-	TTAuint8 *buffer = NULL;
-	TTAuint32 buf_size, smp_size, data_size, res;
-	TTAint32 len;
+	uint8_t *buffer = NULL;
+	uint32_t buf_size, smp_size, data_size, res;
+	int32_t len;
 	TTA_info info;
 	int ret = -1;
 
@@ -446,7 +446,7 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	buf_size = PCM_BUFFER_LENGTH * smp_size;
 
 	// allocate memory for PCM buffer
-	buffer = (TTAuint8 *) tta_malloc(buf_size + 4); // +4 for WRITE_BUFFER macro
+	buffer = (uint8_t *) tta_malloc(buf_size + 4); // +4 for WRITE_BUFFER macro
 	if (buffer == NULL) {
 		tta_strerror(MEMORY_ERROR);
 		goto done;
@@ -461,11 +461,11 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	wave_hdr.subchunk_id = fmt_SIGN;
 	wave_hdr.subchunk_size = 16;
 	wave_hdr.audio_format = 1;
-	wave_hdr.num_channels = (TTAuint16) info.nch;
+	wave_hdr.num_channels = (uint16_t) info.nch;
 	wave_hdr.sample_rate = info.sps;
 	wave_hdr.bits_per_sample = info.bps;
 	wave_hdr.byte_rate = info.sps * smp_size;
-	wave_hdr.block_align = (TTAuint16) smp_size;
+	wave_hdr.block_align = (uint16_t) smp_size;
 
 	// Write WAVE header
 	if (write_wav_hdr(outfile, &wave_hdr, data_size)){
@@ -503,8 +503,8 @@ int tta_main(int argc, TTAwchar **argv) {
 	HANDLE outfile = INVALID_HANDLE_VALUE;
 	HANDLE tmpfile = INVALID_HANDLE_VALUE;
 	std::string password;
-	TTAuint8 *pwstr = NULL;
-	TTAuint32 start, end;
+	uint8_t *pwstr = NULL;
+	uint32_t start, end;
 	int act = 0;
 	int pwlen = 0;
 	int blind = 0;

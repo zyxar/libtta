@@ -36,11 +36,11 @@
 ////////////////////////// hybrid_filter_sse4_dec ///////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
+static __inline void hybrid_filter_dec(TTA_fltst *fs, int32_t *in) {
+	register int32_t *pA = fs->dl;
+	register int32_t *pB = fs->qm;
+	register int32_t *pM = fs->dx;
+	register int32_t sum = fs->round;
 	register __m128i xmA1, xmA2, xmB1, xmB2, xmM1, xmM2, xmDP;
 
 	xmA1 = _mm_load_si128((__m128i*)pA);
@@ -89,11 +89,11 @@ static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
 ////////////////////////// hybrid_filter_sse4_enc ///////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
+static __inline void hybrid_filter_enc(TTA_fltst *fs, int32_t *in) {
+	register int32_t *pA = fs->dl;
+	register int32_t *pB = fs->qm;
+	register int32_t *pM = fs->dx;
+	register int32_t sum = fs->round;
 	register __m128i xmA1, xmA2, xmB1, xmB2, xmM1, xmM2, xmDP;
 
 	xmA1 = _mm_load_si128((__m128i*)pA);
@@ -149,11 +149,11 @@ typedef union {
 } __simd_i256 __attribute__((aligned(32)));
 
 
-static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
-	TTAint32 *pA = fs->dl;
-	TTAint32 *pB = fs->qm;
-	TTAint32 *pM = fs->dx;
-	TTAint32 sum = fs->round;
+static __inline void hybrid_filter_dec(TTA_fltst *fs, int32_t *in) {
+	int32_t *pA = fs->dl;
+	int32_t *pB = fs->qm;
+	int32_t *pM = fs->dx;
+	int32_t sum = fs->round;
 	__simd_i256 xmA, xmB, xmM;
 
 	xmA.self = simd_make_int8(vld1q_s32(pA), vld1q_s32(pA+4));
@@ -188,11 +188,11 @@ static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
 	vst1q_s32(pA+4, i);
 }
 
-static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
-	TTAint32 *pA = fs->dl;
-	TTAint32 *pB = fs->qm;
-	TTAint32 *pM = fs->dx;
-	TTAint32 sum = fs->round;
+static __inline void hybrid_filter_enc(TTA_fltst *fs, int32_t *in) {
+	int32_t *pA = fs->dl;
+	int32_t *pB = fs->qm;
+	int32_t *pM = fs->dx;
+	int32_t sum = fs->round;
 	__simd_i256 xmA, xmB, xmM;
 
 	xmA.self = simd_make_int8(vld1q_s32(pA), vld1q_s32(pA+4));
@@ -232,11 +232,11 @@ static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
 ///////////////////////// hybrid_filter_compat_dec //////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
+static __inline void hybrid_filter_dec(TTA_fltst *fs, int32_t *in) {
+	register int32_t *pA = fs->dl;
+	register int32_t *pB = fs->qm;
+	register int32_t *pM = fs->dx;
+	register int32_t sum = fs->round;
 
 	if (fs->error < 0) {
 		pB[0] -= pM[0]; pB[1] -= pM[1]; pB[2] -= pM[2]; pB[3] -= pM[3];
@@ -268,11 +268,11 @@ static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
 ///////////////////////// hybrid_filter_compat_enc //////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
+static __inline void hybrid_filter_enc(TTA_fltst *fs, int32_t *in) {
+	register int32_t *pA = fs->dl;
+	register int32_t *pB = fs->qm;
+	register int32_t *pM = fs->dx;
+	register int32_t sum = fs->round;
 
 	if (fs->error < 0) {
 		pB[0] -= pM[0]; pB[1] -= pM[1]; pB[2] -= pM[2]; pB[3] -= pM[3];

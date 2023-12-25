@@ -45,7 +45,7 @@ namespace tta {
 //////////////////////// constants and definitions //////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-const TTAuint32 bit_mask[] = {
+const uint32_t bit_mask[] = {
 	0x00000000, 0x00000001, 0x00000003, 0x00000007,
 	0x0000000f, 0x0000001f, 0x0000003f, 0x0000007f,
 	0x000000ff, 0x000001ff, 0x000003ff, 0x000007ff,
@@ -57,7 +57,7 @@ const TTAuint32 bit_mask[] = {
 	0xffffffff
 }; // bit_mask
 
-const TTAuint32 bit_shift[] = {
+const uint32_t bit_shift[] = {
 	0x00000001, 0x00000002, 0x00000004, 0x00000008,
 	0x00000010, 0x00000020, 0x00000040, 0x00000080,
 	0x00000100, 0x00000200, 0x00000400, 0x00000800,
@@ -70,9 +70,9 @@ const TTAuint32 bit_shift[] = {
 	0x80000000, 0x80000000, 0x80000000, 0x80000000
 }; // bit_shift
 
-const TTAuint32 *shift_16 = bit_shift + 4;
+const uint32_t *shift_16 = bit_shift + 4;
 
-const TTAuint32 crc32_table[256] = {
+const uint32_t crc32_table[256] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
 	0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
 	0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91, 0x1db71064, 0x6ab020f2,
@@ -118,7 +118,7 @@ const TTAuint32 crc32_table[256] = {
 	0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
 }; // crc32_table
 
-const TTAuint32 crc64_table_lo[256] = {
+const uint32_t crc64_table_lo[256] = {
 	0x00000000, 0xa9ea3693, 0x53d46d26, 0xfa3e5bb5, 0x0e42ecdf, 0xa7a8da4c,
 	0x5d9681f9, 0xf47cb76a, 0x1c85d9be, 0xb56fef2d, 0x4f51b498, 0xe6bb820b,
 	0x12c73561, 0xbb2d03f2, 0x41135847, 0xe8f96ed4, 0x90e185ef, 0x390bb37c,
@@ -164,7 +164,7 @@ const TTAuint32 crc64_table_lo[256] = {
 	0x34bbeeb2, 0x9d51d821, 0x676f8394, 0xce85b507
 }; // crc64_table_lo
 
-const TTAuint32 crc64_table_hi[256] = {
+const uint32_t crc64_table_hi[256] = {
 	0x00000000, 0x42f0e1eb, 0x85e1c3d7, 0xc711223c, 0x49336645, 0x0bc387ae,
 	0xccd2a592, 0x8e224479, 0x9266cc8a, 0xd0962d61, 0x17870f5d, 0x5577eeb6,
 	0xdb55aacf, 0x99a54b24, 0x5eb46918, 0x1c4488f3, 0x663d78ff, 0x24cd9914,
@@ -210,7 +210,7 @@ const TTAuint32 crc64_table_hi[256] = {
 	0x5dedc41a, 0x1f1d25f1, 0xd80c07cd, 0x9afce626
 }; // crc64_table_hi
 
-const TTAint32 flt_set[3] = {10, 9, 10};
+const int32_t flt_set[3] = {10, 9, 10};
 
 ///////////////////////////////// macros ////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -223,22 +223,22 @@ const TTAint32 flt_set[3] = {10, 9, 10};
 
 #ifdef ENABLE_FRW // optimized, requires +3 bytes at the tail of the buffer
 #define READ_BUFFER(x, p, d, s) { \
-	x = *(TTAint32 *)p << s; \
+	x = *(int32_t *)p << s; \
 	p += d; }
 #define WRITE_BUFFER(x, p, d) { \
-	*(TTAint32 *)p = *x; \
+	*(int32_t *)p = *x; \
 	p += d; }
 #else // not optimized, but accurate
 #define READ_BUFFER(x, p, d, s) { \
-	if (d == 2) x = *(TTAint16 *)p << s; \
+	if (d == 2) x = *(int16_t *)p << s; \
 	else if (d == 1) x = *p << s; \
-	else x = *(TTAint32 *)p << s; \
+	else x = *(int32_t *)p << s; \
 	p += d; }
 
 #define WRITE_BUFFER(x, p, d) { \
-	if (d == 2) *(TTAint16 *)p = 0xffff & *x; \
+	if (d == 2) *(int16_t *)p = 0xffff & *x; \
 	else if (d == 1) *p = 0xff & *x; \
-	else *(TTAint32 *)p = *x; \
+	else *(int32_t *)p = *x; \
 	p += d; }
 #endif
 
@@ -262,13 +262,13 @@ CPU_ARCH_TYPE binary_version() {
 } // binary_version
 
 
-void compute_key_digits(void const *pstr, TTAuint32 len, TTAuint64* out) {
-	TTAint8 *cstr = (TTAint8 *) pstr;
-	TTAuint32 crc_lo = UINT32_MAX;
-	TTAuint32 crc_hi = UINT32_MAX;
+void compute_key_digits(void const *pstr, uint32_t len, uint64_t* out) {
+	int8_t *cstr = (int8_t *) pstr;
+	uint32_t crc_lo = UINT32_MAX;
+	uint32_t crc_hi = UINT32_MAX;
 
 	while (len--) {
-		TTAuint32 tab_index = ((crc_hi >> 24) ^ *cstr++) & 0xff;
+		uint32_t tab_index = ((crc_hi >> 24) ^ *cstr++) & 0xff;
 		crc_hi = crc64_table_hi[tab_index] ^ ((crc_hi << 8) | (crc_lo >> 24));
 		crc_lo = crc64_table_lo[tab_index] ^ (crc_lo << 8);
 	}
@@ -277,23 +277,23 @@ void compute_key_digits(void const *pstr, TTAuint32 len, TTAuint64* out) {
 	crc_hi ^= UINT32_MAX;
 
 	if constexpr (std::endian::native == std::endian::big) {
-		crc_lo = ((TTAuint32)((((TTAuint32)(crc_lo) & 0xff000000U) >> 24) | \
-	        (((TTAuint32)(crc_lo) & 0x00ff0000U) >>  8) | \
-	        (((TTAuint32)(crc_lo) & 0x0000ff00U) <<  8) | \
-	        (((TTAuint32)(crc_lo) & 0x000000ffU) << 24)));
-		crc_hi = ((TTAuint32)((((TTAuint32)(crc_hi) & 0xff000000U) >> 24) | \
-	        (((TTAuint32)(crc_hi) & 0x00ff0000U) >>  8) | \
-	        (((TTAuint32)(crc_hi) & 0x0000ff00U) <<  8) | \
-	        (((TTAuint32)(crc_hi) & 0x000000ffU) << 24)));
+		crc_lo = ((uint32_t)((((uint32_t)(crc_lo) & 0xff000000U) >> 24) | \
+	        (((uint32_t)(crc_lo) & 0x00ff0000U) >>  8) | \
+	        (((uint32_t)(crc_lo) & 0x0000ff00U) <<  8) | \
+	        (((uint32_t)(crc_lo) & 0x000000ffU) << 24)));
+		crc_hi = ((uint32_t)((((uint32_t)(crc_hi) & 0xff000000U) >> 24) | \
+	        (((uint32_t)(crc_hi) & 0x00ff0000U) >>  8) | \
+	        (((uint32_t)(crc_hi) & 0x0000ff00U) <<  8) | \
+	        (((uint32_t)(crc_hi) & 0x000000ffU) << 24)));
 	}
-	*out = (((TTAuint64) crc_hi) << 32) | ((TTAuint64) crc_lo);
+	*out = (((uint64_t) crc_hi) << 32) | ((uint64_t) crc_lo);
 } // compute_key_digits
 
 
 codec::codec() {}
 codec::~codec() {}
 
-void codec::init(TTAint8 *data, TTAint32 shift, TTAuint32 k0, TTAuint32 k1) {
+void codec::init(int8_t *data, int32_t shift, uint32_t k0, uint32_t k1) {
 	tta_memclear(&m_fltst, sizeof(TTA_fltst));
 	m_fltst.shift = shift;
 	m_fltst.round = 1 << (shift - 1);
@@ -312,7 +312,7 @@ void codec::init(TTAint8 *data, TTAint32 shift, TTAuint32 k0, TTAuint32 k1) {
 	m_prev = 0;
 }
 
-void codec::decode(TTAint32* value) {
+void codec::decode(int32_t* value) {
 	// decompress stage 1: adaptive hybrid filter
 	hybrid_filter_dec(&m_fltst, value);
 	// decompress stage 2: fixed order 1 prediction
@@ -320,9 +320,9 @@ void codec::decode(TTAint32* value) {
 	m_prev = *value;
 }
 
-void codec::encode(TTAint32* value) {
+void codec::encode(int32_t* value) {
 	// compress stage 1: fixed order 1 prediction
-	TTAint32 temp = *value;
+	int32_t temp = *value;
 	*value -= PREDICTOR1(m_prev, 5);
 	m_prev = temp;
 	// compress stage 2: adaptive hybrid filter
@@ -354,7 +354,7 @@ void bufio::reset() {
 	m_count = 0;
 }
 
-TTAuint8 bufio::read_byte() {
+uint8_t bufio::read_byte() {
 	if (m_pos == m_buffer+TTA_FIFO_BUFFER_SIZE) {
 		if (!m_io->Read(m_buffer, TTA_FIFO_BUFFER_SIZE))
 			throw exception(READ_ERROR);
@@ -366,15 +366,15 @@ TTAuint8 bufio::read_byte() {
 	return *m_pos++;
 }
 
-TTAuint32 bufio::read_uint16() {
-	TTAuint32 value = 0;
+uint32_t bufio::read_uint16() {
+	uint32_t value = 0;
 	value |= read_byte();
 	value |= read_byte() << 8;
 	return value;
 }
 
-TTAuint32 bufio::read_uint32() {
-	TTAuint32 value = 0;
+uint32_t bufio::read_uint32() {
+	uint32_t value = 0;
 	value |= read_byte();
 	value |= read_byte() << 8;
 	value |= read_byte() << 16;
@@ -383,20 +383,20 @@ TTAuint32 bufio::read_uint32() {
 }
 
 bool bufio::read_crc32() {
-	TTAuint32 crc = m_crc ^ 0xffffffffUL;
+	uint32_t crc = m_crc ^ 0xffffffffUL;
 	return (crc != read_uint32());
 }
 
-void bufio::reader_skip_bytes(TTAuint32 size) {
+void bufio::reader_skip_bytes(uint32_t size) {
 	while (size--) read_byte();
 }
 
-void bufio::writer_skip_bytes(TTAuint32 size) {
+void bufio::writer_skip_bytes(uint32_t size) {
 	while (size--) write_byte(0);
 }
 
-TTAuint32 bufio::skip_id3v2() {
-	TTAuint32 size = 0;
+uint32_t bufio::skip_id3v2() {
+	uint32_t size = 0;
 	this->reset();
 
 	// id3v2 header must be at start
@@ -420,8 +420,8 @@ TTAuint32 bufio::skip_id3v2() {
 	return (size + 10);
 }
 
-TTAuint32 bufio::read_tta_header(TTA_info *info) {
-	TTAuint32 size = skip_id3v2();
+uint32_t bufio::read_tta_header(TTA_info *info) {
+	uint32_t size = skip_id3v2();
 	this->reset();
 
 	if ('T' != read_byte() ||
@@ -442,7 +442,7 @@ TTAuint32 bufio::read_tta_header(TTA_info *info) {
 	return size;
 }
 
-TTAuint32 bufio::write_tta_header(TTA_info *info) {
+uint32_t bufio::write_tta_header(TTA_info *info) {
 	this->reset();
 	// write TTA1 signature
 	write_byte('T');
@@ -460,11 +460,11 @@ TTAuint32 bufio::write_tta_header(TTA_info *info) {
 	return 22; // sizeof TTA1 header
 }
 
-TTAuint32 bufio::count() const { return m_count; }
+uint32_t bufio::count() const { return m_count; }
 
-TTAint32 bufio::get_value(TTA_adapt& rice) {
-	TTAuint32 k, level, tmp;
-	TTAint32 value = 0;
+int32_t bufio::get_value(TTA_adapt& rice) {
+	uint32_t k, level, tmp;
+	int32_t value = 0;
 
 	// decode Rice unsigned
 	if (!(m_bcache ^ bit_mask[m_bcount])) {
@@ -527,7 +527,7 @@ TTAint32 bufio::get_value(TTA_adapt& rice) {
 }
 
 void bufio::writer_done() {
-	TTAint32 buffer_size = (TTAint32)(m_pos - m_buffer);
+	int32_t buffer_size = (int32_t)(m_pos - m_buffer);
 	if (buffer_size) {
 		if (m_io->Write(m_buffer, buffer_size) != buffer_size)
 			throw exception(WRITE_ERROR);
@@ -535,7 +535,7 @@ void bufio::writer_done() {
 	}
 }
 
-void bufio::write_byte(TTAuint32 value) {
+void bufio::write_byte(uint32_t value) {
 	if (m_pos == m_buffer+TTA_FIFO_BUFFER_SIZE) {
 		if (m_io->Write(m_buffer, TTA_FIFO_BUFFER_SIZE) != TTA_FIFO_BUFFER_SIZE)
 			throw exception(WRITE_ERROR);
@@ -547,12 +547,12 @@ void bufio::write_byte(TTAuint32 value) {
 	*m_pos++ = (value & 0xff);
 }
 
-void bufio::write_uint16(TTAuint32 value) {
+void bufio::write_uint16(uint32_t value) {
 	write_byte(value);
 	write_byte(value >> 8);
 } // write_uint16
 
-void bufio::write_uint32(TTAuint32 value) {
+void bufio::write_uint32(uint32_t value) {
 	write_byte(value);
 	write_byte(value >> 8);
 	write_byte(value >> 16);
@@ -560,12 +560,12 @@ void bufio::write_uint32(TTAuint32 value) {
 } // write_uint32
 
 void bufio::write_crc32() {
-	TTAuint32 crc = m_crc ^ 0xffffffffUL;
+	uint32_t crc = m_crc ^ 0xffffffffUL;
 	write_uint32(crc);
 }
 
-void bufio::put_value(TTA_adapt& rice, TTAint32 value) {
-	TTAuint32 k, unary, outval;
+void bufio::put_value(TTA_adapt& rice, int32_t value) {
+	uint32_t k, unary, outval;
 
 	outval = ENC(value);
 
@@ -636,8 +636,8 @@ void bufio::flush_bit_cache() {
 /////////////////////////////////////////////////////////////////////////////
 
 bool tta_decoder::read_seek_table() {
-	TTAuint64 tmp;
-	TTAuint32 i;
+	uint64_t tmp;
+	uint32_t i;
 
 	if (!seek_table) return false;
 
@@ -654,8 +654,8 @@ bool tta_decoder::read_seek_table() {
 	return true;
 } // read_seek_table
 
-void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
-	TTAint32 shift = flt_set[depth - 1];
+void tta_decoder::frame_init(uint32_t frame, bool seek_needed) {
+	int32_t shift = flt_set[depth - 1];
 	codec *dec = m_decoder;
 
 	if (frame >= frames) return;
@@ -663,7 +663,7 @@ void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
 	fnum = frame;
 
 	if (seek_needed && seek_allowed) {
-		TTAuint64 pos = seek_table[fnum];
+		uint64_t pos = seek_table[fnum];
 		if (pos && m_bufio.io()->Seek(pos) < 0)
 			throw exception(SEEK_ERROR);
 		m_bufio.reader_start();
@@ -682,14 +682,14 @@ void tta_decoder::frame_init(TTAuint32 frame, bool seek_needed) {
 	m_bufio.reset();
 } // frame_init
 
-void tta_decoder::frame_reset(TTAuint32 frame, fileio *io) {
+void tta_decoder::frame_reset(uint32_t frame, fileio *io) {
 	m_bufio.io(io);
 	m_bufio.reader_start();
 	frame_init(frame, false);
 } // frame_reset
 
-void tta_decoder::set_position(TTAuint32 seconds, TTAuint32 *new_pos) {
-	TTAuint32 frame = DIV_FRAME_TIME(seconds);
+void tta_decoder::set_position(uint32_t seconds, uint32_t *new_pos) {
+	uint32_t frame = DIV_FRAME_TIME(seconds);
 	*new_pos = MUL_FRAME_TIME(frame);
 
 	if (!seek_allowed || frame >= frames)
@@ -698,7 +698,7 @@ void tta_decoder::set_position(TTAuint32 seconds, TTAuint32 *new_pos) {
 	frame_init(frame, true);
 } // set_position
 
-void tta_decoder::init(TTA_info *info, TTAuint64 pos, const std::string& password) {
+void tta_decoder::init(TTA_info *info, uint64_t pos, const std::string& password) {
 	// set start position if required
 	if (pos && m_bufio.io()->Seek(pos) < 0)
 		throw exception(SEEK_ERROR);
@@ -730,7 +730,7 @@ void tta_decoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 	rate = 0;
 
 	// allocate memory for seek table data
-	seek_table = (TTAuint64 *) tta_malloc(frames * sizeof(TTAuint64));
+	seek_table = (uint64_t *) tta_malloc(frames * sizeof(uint64_t));
 	if (seek_table == NULL)
 		throw exception(MEMORY_ERROR);
 
@@ -740,15 +740,15 @@ void tta_decoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 	frame_init(0, false);
 } // init
 
-int tta_decoder::process_stream(TTAuint8 *output, TTAuint32 out_bytes,
+int tta_decoder::process_stream(uint8_t *output, uint32_t out_bytes,
 	CALLBACK callback) {
 	codec *dec = m_decoder;
-	TTAuint8 *ptr = output;
-	TTAint32 cache[MAX_NCH];
-	TTAint32 *cp = cache;
-	TTAint32 *end, *smp;
-	TTAint32 value;
-	TTAint32 ret = 0;
+	uint8_t *ptr = output;
+	int32_t cache[MAX_NCH];
+	int32_t *cp = cache;
+	int32_t *end, *smp;
+	int32_t value;
+	int32_t ret = 0;
 
 	while (fpos < flen
 		&& ptr < output + out_bytes) {
@@ -811,15 +811,15 @@ int tta_decoder::process_stream(TTAuint8 *output, TTAuint32 out_bytes,
 	return ret;
 } // process_stream
 
-int tta_decoder::process_frame(TTAuint32 in_bytes, TTAuint8 *output,
-	TTAuint32 out_bytes) {
+int tta_decoder::process_frame(uint32_t in_bytes, uint8_t *output,
+	uint32_t out_bytes) {
 	codec *dec = m_decoder;
-	TTAuint8 *ptr = output;
-	TTAint32 cache[MAX_NCH];
-	TTAint32 *cp = cache;
-	TTAint32 *end, *smp;
-	TTAint32 value;
-	TTAint32 ret = 0;
+	uint8_t *ptr = output;
+	int32_t cache[MAX_NCH];
+	int32_t *cp = cache;
+	int32_t *end, *smp;
+	int32_t value;
+	int32_t ret = 0;
 
 	while (m_bufio.count() < in_bytes
 		&& ptr < output + out_bytes) {
@@ -875,7 +875,7 @@ int tta_decoder::process_frame(TTAuint32 in_bytes, TTAuint8 *output,
 	return ret;
 } // process_frame
 
-TTAuint32 tta_decoder::get_rate() { return rate; }
+uint32_t tta_decoder::get_rate() { return rate; }
 
 tta_decoder::tta_decoder(fileio *io) : seek_allowed(false), m_bufio(io), seek_table(nullptr) {
 	data.all = 0;
@@ -889,7 +889,7 @@ tta_decoder::~tta_decoder() {
 /////////////////////////////////////////////////////////////////////////////
 
 void tta_encoder::write_seek_table() {
-	TTAuint32 i, tmp;
+	uint32_t i, tmp;
 
 	if (seek_table == NULL)
 		return;
@@ -909,8 +909,8 @@ void tta_encoder::write_seek_table() {
 	m_bufio.writer_done();
 } // write_seek_table
 
-void tta_encoder::frame_init(TTAuint32 frame) {
-	TTAint32 shift = flt_set[depth - 1];
+void tta_encoder::frame_init(uint32_t frame) {
+	int32_t shift = flt_set[depth - 1];
 	codec *enc = m_encoder;
 
 	if (frame >= frames) return;
@@ -930,13 +930,13 @@ void tta_encoder::frame_init(TTAuint32 frame) {
 	m_bufio.reset();
 } // frame_init
 
-void tta_encoder::frame_reset(TTAuint32 frame, fileio *io) {
+void tta_encoder::frame_reset(uint32_t frame, fileio *io) {
 	m_bufio.io(io);
 	m_bufio.writer_start();
 	frame_init(frame);
 } // frame_reset
 
-void tta_encoder::init(TTA_info *info, TTAuint64 pos, const std::string& password) {
+void tta_encoder::init(TTA_info *info, uint64_t pos, const std::string& password) {
 	// check for supported formats
 	if (info->format > 2 ||
 		info->bps < MIN_BPS ||
@@ -968,7 +968,7 @@ void tta_encoder::init(TTA_info *info, TTAuint64 pos, const std::string& passwor
 	rate = 0;
 
 	// allocate memory for seek table data
-	seek_table = (TTAuint64 *) tta_malloc(frames * sizeof(TTAuint64));
+	seek_table = (uint64_t *) tta_malloc(frames * sizeof(uint64_t));
 	if (seek_table == NULL)
 		throw exception(MEMORY_ERROR);
 
@@ -985,13 +985,13 @@ void tta_encoder::finalize() {
 	write_seek_table();
 } // finalize
 
-void tta_encoder::process_stream(TTAuint8 *input, TTAuint32 in_bytes,
+void tta_encoder::process_stream(uint8_t *input, uint32_t in_bytes,
 	CALLBACK callback) {
 	codec *enc = m_encoder;
-	TTAuint8 *ptr = input;
-	TTAuint8 *pend = input + in_bytes;
-	TTAint32 curr, next, temp;
-	TTAint32 res = 0;
+	uint8_t *ptr = input;
+	uint8_t *pend = input + in_bytes;
+	int32_t curr, next, temp;
+	int32_t res = 0;
 
 	if (!in_bytes) return;
 
@@ -1037,12 +1037,12 @@ void tta_encoder::process_stream(TTAuint8 *input, TTAuint32 in_bytes,
 	} while (ptr <= pend);
 } // process_stream
 
-void tta_encoder::process_frame(TTAuint8 *input, TTAuint32 in_bytes) {
+void tta_encoder::process_frame(uint8_t *input, uint32_t in_bytes) {
 	codec *enc = m_encoder;
-	TTAuint8 *ptr = input;
-	TTAuint8 *pend = input + in_bytes;
-	TTAint32 curr, next, temp;
-	TTAint32 res = 0;
+	uint8_t *ptr = input;
+	uint8_t *pend = input + in_bytes;
+	int32_t curr, next, temp;
+	int32_t res = 0;
 
 	if (!in_bytes) return;
 
@@ -1085,7 +1085,7 @@ void tta_encoder::process_frame(TTAuint8 *input, TTAuint32 in_bytes) {
 	} while (ptr <= pend);
 } // process_frame
 
-TTAuint32 tta_encoder::get_rate() { return rate; }
+uint32_t tta_encoder::get_rate() { return rate; }
 
 tta_encoder::tta_encoder(fileio *io) : m_bufio(io), seek_table(nullptr) {
 	data.all = 0;
