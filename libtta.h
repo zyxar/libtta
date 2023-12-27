@@ -107,12 +107,6 @@ typedef struct {
 	int32_t dl[24];
 } TTA_ALIGNED(16) TTA_fltst;
 
-typedef struct {
-	uint32_t k0;
-	uint32_t k1;
-	uint32_t sum0;
-	uint32_t sum1;
-} TTA_ALIGNED(16) TTA_adapt;
 
 namespace tta
 {
@@ -159,10 +153,14 @@ namespace tta
 		void init(int8_t *data, int32_t shift, uint32_t k0, uint32_t k1);
 		__inline void decode(int32_t* value);
 		__inline void encode(int32_t* value);
-		TTA_adapt& adapt() { return m_adapt; }
+		__inline uint32_t& k0() { return m_k[0]; }
+		__inline uint32_t& k1() { return m_k[1]; }
+		__inline uint32_t& sum0() { return m_sum[0]; }
+		__inline uint32_t& sum1() { return m_sum[1]; }
 	private:
 		TTA_fltst m_fltst;
-		TTA_adapt m_adapt;
+		uint32_t m_k[2];
+		uint32_t m_sum[2];
 		int32_t m_prev;
 	};
 
@@ -199,7 +197,7 @@ namespace tta
 		__inline uint32_t read_uint16();
 		__inline uint32_t read_uint32();
 		__inline bool read_crc32();
-		__inline int32_t get_value(TTA_adapt& rice);
+		__inline int32_t get_value(codec& c);
 		__inline uint32_t count() const;
 		uint32_t read_tta_header(TTA_info *info);
 		uint32_t write_tta_header(TTA_info *info);
@@ -209,7 +207,7 @@ namespace tta
 		__inline void write_uint16(uint32_t value);
 		__inline void write_uint32(uint32_t value);
 		__inline void write_crc32();
-		__inline void put_value(TTA_adapt& rice, int32_t value);
+		__inline void put_value(codec& c, int32_t value);
 		__inline void flush_bit_cache();
 
 	private:

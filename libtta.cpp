@@ -305,10 +305,10 @@ void codec::init(int8_t *data, int32_t shift, uint32_t k0, uint32_t k1) {
 	m_fltst.qm[5] = data[5];
 	m_fltst.qm[6] = data[6];
 	m_fltst.qm[7] = data[7];
-	m_adapt.k0 = k0;
-	m_adapt.k1 = k1;
-	m_adapt.sum0 = shift_16[k0];
-	m_adapt.sum1 = shift_16[k1];
+	m_k[0] = k0;
+	m_k[1] = k1;
+	m_sum[0] = shift_16[k0];
+	m_sum[1] = shift_16[k1];
 	m_prev = 0;
 }
 
@@ -462,7 +462,7 @@ uint32_t bufio::write_tta_header(TTA_info *info) {
 
 uint32_t bufio::count() const { return m_count; }
 
-int32_t bufio::get_value(TTA_adapt& rice) {
+int32_t bufio::get_value(codec& c) {
 	uint32_t k, level, tmp;
 	int32_t value = 0;
 
@@ -487,11 +487,11 @@ int32_t bufio::get_value(TTA_adapt& rice) {
 
 	if (value) {
 		level = 1;
-		k = rice.k1;
+		k = c.k1();
 		value--;
 	} else {
 		level = 0;
-		k = rice.k0;
+		k = c.k0();
 	}
 
 	if (k) {
@@ -507,19 +507,19 @@ int32_t bufio::get_value(TTA_adapt& rice) {
 	}
 
 	if (level) {
-		rice.sum1 += value - (rice.sum1 >> 4);
-		if (rice.k1 > 0 && rice.sum1 < shift_16[rice.k1])
-			rice.k1--;
-		else if (rice.sum1 > shift_16[rice.k1 + 1])
-			rice.k1++;
-		value += bit_shift[rice.k0];
+		c.sum1() += value - (c.sum1() >> 4);
+		if (c.k1() > 0 && c.sum1() < shift_16[c.k1()])
+			c.k1()--;
+		else if (c.sum1() > shift_16[c.k1() + 1])
+			c.k1()++;
+		value += bit_shift[c.k0()];
 	}
 
-	rice.sum0 += value - (rice.sum0 >> 4);
-	if (rice.k0 > 0 && rice.sum0 < shift_16[rice.k0])
-		rice.k0--;
-	else if (rice.sum0 > shift_16[rice.k0 + 1])
-	rice.k0++;
+	c.sum0() += value - (c.sum0() >> 4);
+	if (c.k0() > 0 && c.sum0() < shift_16[c.k0()])
+		c.k0()--;
+	else if (c.sum0() > shift_16[c.k0() + 1])
+	c.k0()++;
 
 	value = DEC(value);
 
@@ -564,29 +564,29 @@ void bufio::write_crc32() {
 	write_uint32(crc);
 }
 
-void bufio::put_value(TTA_adapt& rice, int32_t value) {
+void bufio::put_value(codec& c, int32_t value) {
 	uint32_t k, unary, outval;
 
 	outval = ENC(value);
 
 	// encode Rice unsigned
-	k = rice.k0;
+	k = c.k0();
 
-	rice.sum0 += outval - (rice.sum0 >> 4);
-	if (rice.k0 > 0 && rice.sum0 < shift_16[rice.k0])
-		rice.k0--;
-	else if (rice.sum0 > shift_16[rice.k0 + 1])
-		rice.k0++;
+	c.sum0() += outval - (c.sum0() >> 4);
+	if (c.k0() > 0 && c.sum0() < shift_16[c.k0()])
+		c.k0()--;
+	else if (c.sum0() > shift_16[c.k0() + 1])
+		c.k0()++;
 
 	if (outval >= bit_shift[k]) {
 		outval -= bit_shift[k];
-		k = rice.k1;
+		k = c.k1();
 
-		rice.sum1 += outval - (rice.sum1 >> 4);
-		if (rice.k1 > 0 && rice.sum1 < shift_16[rice.k1])
-			rice.k1--;
-		else if (rice.sum1 > shift_16[rice.k1 + 1])
-			rice.k1++;
+		c.sum1() += outval - (c.sum1() >> 4);
+		if (c.k1() > 0 && c.sum1() < shift_16[c.k1()])
+			c.k1()--;
+		else if (c.sum1() > shift_16[c.k1() + 1])
+			c.k1()++;
 
 		unary = 1 + (outval >> k);
 	} else unary = 0;
@@ -752,7 +752,7 @@ int tta_decoder::process_stream(uint8_t *output, uint32_t out_bytes,
 
 	while (fpos < flen
 		&& ptr < output + out_bytes) {
-		value = m_bufio.get_value(dec->adapt());
+		value = m_bufio.get_value(*dec);
 
 		dec->decode(&value);
 
@@ -823,7 +823,7 @@ int tta_decoder::process_frame(uint32_t in_bytes, uint8_t *output,
 
 	while (m_bufio.count() < in_bytes
 		&& ptr < output + out_bytes) {
-		value = m_bufio.get_value(dec->adapt());
+		value = m_bufio.get_value(*dec);
 
 		dec->decode(&value);
 
@@ -1014,7 +1014,7 @@ void tta_encoder::process_stream(uint8_t *input, uint32_t in_bytes,
 
 		enc->encode(&curr);
 
-		m_bufio.put_value(enc->adapt(), curr);
+		m_bufio.put_value(*enc, curr);
 
 		if (enc < m_encoder_last) {
 			enc++;
@@ -1065,7 +1065,7 @@ void tta_encoder::process_frame(uint8_t *input, uint32_t in_bytes) {
 
 		enc->encode(&curr);
 
-		m_bufio.put_value(enc->adapt(), curr);
+		m_bufio.put_value(*enc, curr);
 
 		if (enc < m_encoder_last) {
 			enc++;
