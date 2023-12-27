@@ -150,7 +150,7 @@ namespace tta
 	public:
 		explicit codec();
 		virtual ~codec();
-		void init(int8_t *data, int32_t shift, uint32_t k0, uint32_t k1);
+		void init(uint64_t data, int32_t shift, uint32_t k0, uint32_t k1);
 		__inline void decode(int32_t* value);
 		__inline void encode(int32_t* value);
 		__inline uint32_t& k0() { return m_k[0]; }
@@ -232,7 +232,7 @@ namespace tta
 
 	protected:
 		codec m_decoder[MAX_NCH]; // decoder (1 per channel)
-		union{int8_t bytes[8];uint64_t all;} data; // decoder initialization data
+		uint64_t m_data; // decoder initialization data
 		bufio m_bufio;
 		codec *m_decoder_last;
 		uint64_t *seek_table; // the playing position table
@@ -266,7 +266,7 @@ namespace tta
 
 	protected:
 		codec m_encoder[MAX_NCH]; // encoder (1 per channel)
-		union{int8_t bytes[8];uint64_t all;} data; // encoder initialization data
+		uint64_t m_data; // encoder initialization data
 		bufio m_bufio;
 		codec *m_encoder_last;
 		uint64_t *seek_table; // the playing position table

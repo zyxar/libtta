@@ -12,7 +12,6 @@
 #include "libtta.h"
 #include "config.h"
 #include "filter.h"
-#include <bit>
 
 /////////////////////////////// portability /////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -276,16 +275,6 @@ void compute_key_digits(void const *pstr, uint32_t len, uint64_t* out) {
 	crc_lo ^= UINT32_MAX;
 	crc_hi ^= UINT32_MAX;
 
-	if constexpr (std::endian::native == std::endian::big) {
-		crc_lo = ((uint32_t)((((uint32_t)(crc_lo) & 0xff000000U) >> 24) | \
-	        (((uint32_t)(crc_lo) & 0x00ff0000U) >>  8) | \
-	        (((uint32_t)(crc_lo) & 0x0000ff00U) <<  8) | \
-	        (((uint32_t)(crc_lo) & 0x000000ffU) << 24)));
-		crc_hi = ((uint32_t)((((uint32_t)(crc_hi) & 0xff000000U) >> 24) | \
-	        (((uint32_t)(crc_hi) & 0x00ff0000U) >>  8) | \
-	        (((uint32_t)(crc_hi) & 0x0000ff00U) <<  8) | \
-	        (((uint32_t)(crc_hi) & 0x000000ffU) << 24)));
-	}
 	*out = (((uint64_t) crc_hi) << 32) | ((uint64_t) crc_lo);
 } // compute_key_digits
 
@@ -293,18 +282,18 @@ void compute_key_digits(void const *pstr, uint32_t len, uint64_t* out) {
 codec::codec() {}
 codec::~codec() {}
 
-void codec::init(int8_t *data, int32_t shift, uint32_t k0, uint32_t k1) {
+void codec::init(uint64_t data, int32_t shift, uint32_t k0, uint32_t k1) {
 	tta_memclear(&m_fltst, sizeof(TTA_fltst));
 	m_fltst.shift = shift;
 	m_fltst.round = 1 << (shift - 1);
-	m_fltst.qm[0] = data[0];
-	m_fltst.qm[1] = data[1];
-	m_fltst.qm[2] = data[2];
-	m_fltst.qm[3] = data[3];
-	m_fltst.qm[4] = data[4];
-	m_fltst.qm[5] = data[5];
-	m_fltst.qm[6] = data[6];
-	m_fltst.qm[7] = data[7];
+	m_fltst.qm[0] = (int8_t)((data) >> (0*8));
+	m_fltst.qm[1] = (int8_t)((data) >> (1*8));
+	m_fltst.qm[2] = (int8_t)((data) >> (2*8));
+	m_fltst.qm[3] = (int8_t)((data) >> (3*8));
+	m_fltst.qm[4] = (int8_t)((data) >> (4*8));
+	m_fltst.qm[5] = (int8_t)((data) >> (5*8));
+	m_fltst.qm[6] = (int8_t)((data) >> (6*8));
+	m_fltst.qm[7] = (int8_t)((data) >> (7*8));
 	m_k[0] = k0;
 	m_k[1] = k1;
 	m_sum[0] = shift_16[k0];
@@ -674,7 +663,7 @@ void tta_decoder::frame_init(uint32_t frame, bool seek_needed) {
 	else flen = flen_std;
 
 	do {
-		dec->init(data.bytes, shift, 10, 10); // init entropy decoder
+		dec->init(m_data, shift, 10, 10); // init entropy decoder
 	} while (++dec <= m_decoder_last);
 
 	fpos = 0;
@@ -717,7 +706,7 @@ void tta_decoder::init(TTA_info *info, uint64_t pos, const std::string& password
 	if (info->format == FORMAT_ENCRYPTED) {
 		if (password == "")
 			throw exception(PASSWORD_ERROR);
-		compute_key_digits(password.c_str(),  password.size(), &data.all); // set password
+		compute_key_digits(password.c_str(),  password.size(), &m_data); // set password
 	}
 
 	offset = pos; // size of headers
@@ -877,8 +866,7 @@ int tta_decoder::process_frame(uint32_t in_bytes, uint8_t *output,
 
 uint32_t tta_decoder::get_rate() { return rate; }
 
-tta_decoder::tta_decoder(fileio *io) : seek_allowed(false), m_bufio(io), seek_table(nullptr) {
-	data.all = 0;
+tta_decoder::tta_decoder(fileio *io) : seek_allowed(false), m_data(0), m_bufio(io), seek_table(nullptr) {
 } // tta_decoder
 
 tta_decoder::~tta_decoder() {
@@ -922,7 +910,7 @@ void tta_encoder::frame_init(uint32_t frame) {
 	else flen = flen_std;
 
 	do {
-		enc->init(data.bytes, shift, 10, 10); // init entropy encoder
+		enc->init(m_data, shift, 10, 10); // init entropy encoder
 	} while (++enc <= m_encoder_last);
 
 	fpos = 0;
@@ -952,7 +940,7 @@ void tta_encoder::init(TTA_info *info, uint64_t pos, const std::string& password
 		info->format = FORMAT_SIMPLE;
 	} else {
 		info->format = FORMAT_ENCRYPTED;
-		compute_key_digits(password.c_str(),  password.size(), &data.all); // set password
+		compute_key_digits(password.c_str(),  password.size(), &m_data); // set password
 	}
 
 	m_bufio.writer_start();
@@ -1087,8 +1075,7 @@ void tta_encoder::process_frame(uint8_t *input, uint32_t in_bytes) {
 
 uint32_t tta_encoder::get_rate() { return rate; }
 
-tta_encoder::tta_encoder(fileio *io) : m_bufio(io), seek_table(nullptr) {
-	data.all = 0;
+tta_encoder::tta_encoder(fileio *io) : m_data(0), m_bufio(io), seek_table(nullptr) {
 } // tta_encoder
 
 tta_encoder::~tta_encoder() {
