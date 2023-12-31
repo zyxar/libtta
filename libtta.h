@@ -31,6 +31,7 @@
 #include <stdexcept>
 #endif
 
+#include <functional>
 #include <string>
 
 #define MAX_DEPTH 3
@@ -40,7 +41,6 @@
 #define TTA_FIFO_BUFFER_SIZE 5120
 
 #ifdef __GNUC__
-#define STDCALL
 #define TTA_EXTERN_API __attribute__((visibility("default")))
 #define TTA_ALIGNED(n) __attribute__((aligned(n), packed))
 #define __forceinline static __inline
@@ -52,7 +52,6 @@ static __inline void *_aligned_alloc(size_t alignment, size_t size) {
 }
 #endif
 #else // MSVC
-#define STDCALL __stdcall
 #define TTA_EXTERN_API __declspec(dllexport)
 #define TTA_ALIGNED(n) __declspec(align(n))
 #endif
@@ -140,7 +139,7 @@ namespace tta
 	} CPU_ARCH_TYPE;
 
 	// progress callback
-	typedef void (STDCALL *CALLBACK)(uint32_t, uint32_t, uint32_t);
+	typedef std::function<void(uint32_t, uint32_t, uint32_t)> CALLBACK;
 
 	// architecture type compatibility
 	TTA_EXTERN_API CPU_ARCH_TYPE binary_version();
@@ -225,7 +224,7 @@ namespace tta
 
 		void init(TTA_info *info, uint64_t pos, const std::string& password);
 		void frame_reset(uint32_t frame, fileio *io);
-		int process_stream(uint8_t *output, uint32_t out_bytes, CALLBACK tta_callback=NULL);
+		int process_stream(uint8_t *output, uint32_t out_bytes, CALLBACK callback=nullptr);
 		int process_frame(uint32_t in_bytes, uint8_t *output, uint32_t out_bytes);
 		void set_position(uint32_t seconds, uint32_t *new_pos);
 		uint32_t get_rate();
@@ -259,7 +258,7 @@ namespace tta
 
 		void init(TTA_info *info, uint64_t pos, const std::string& password);
 		void frame_reset(uint32_t frame, fileio *io);
-		void process_stream(uint8_t *input, uint32_t in_bytes, CALLBACK tta_callback=NULL);
+		void process_stream(uint8_t *input, uint32_t in_bytes, CALLBACK callback=nullptr);
 		void process_frame(uint8_t *input, uint32_t in_bytes);
 		void finalize();
 		uint32_t get_rate();

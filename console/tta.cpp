@@ -246,7 +246,7 @@ uint8_t *convert_password(const TTAwchar *src, int *len) {
 /////////////////////////////// Callbacks ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-void STDCALL tta_callback(uint32_t rate, uint32_t fnum, uint32_t frames) {
+void tta_callback(uint32_t rate, uint32_t fnum, uint32_t frames) {
 	uint32_t pcnt = (uint32_t)(fnum * 100. / frames);
 	if (!(pcnt % 10))
 		tta_print("\rProgress: %02d%%", pcnt);
