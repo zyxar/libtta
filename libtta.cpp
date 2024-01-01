@@ -13,32 +13,6 @@
 #include "config.h"
 #include "filter.h"
 
-/////////////////////////////// portability /////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-
-#ifdef __GNUC__
-#ifdef CARIBBEAN
-#define tta_memclear(__dest,__length) RMMemset(__dest,0,__length)
-#define tta_memcpy(__dest,__source,__length) RMMemcpy(__dest,__source,__length)
-#define tta_malloc RMMalloc
-#define tta_free RMFree
-#else // GNUC
-#define tta_memclear(__dest,__length) memset(__dest,0,__length)
-#define tta_memcpy(__dest,__source,__length) memcpy(__dest,__source,__length)
-#if defined(__APPLE__)
-#define tta_malloc(__length) _aligned_alloc(16,__length)
-#else
-#define tta_malloc(__length) aligned_alloc(16,__length)
-#endif
-#define tta_free free
-#endif
-#else // MSVC
-#define tta_memclear(__dest,__length) ZeroMemory(__dest,__length)
-#define tta_memcpy(__dest,__source,__length) CopyMemory(__dest,__source,__length)
-#define tta_malloc(__length) _aligned_malloc(__length, 16)
-#define tta_free(__dest) _aligned_free(__dest)
-#endif
-
 namespace tta {
 
 //////////////////////// constants and definitions //////////////////////////

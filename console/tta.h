@@ -55,10 +55,6 @@ typedef RMfile (HANDLE);
 #define tta_read(__handle,__buffer,__size,__result) (RMReadFile(__handle,__buffer,__size,&(__result))==RM_OK?(1):(0))
 #define tta_write(__handle,__buffer,__size,__result) (RMWriteFile(__handle,__buffer,__size,&(__result))==RM_OK?(1):(0))
 #define tta_seek(__handle,__offset) (RMSeekFile(__handle,__offset,RM_FILE_SEEK_START)==RM_OK?(0):(-1))
-#define tta_memclear(__dest,__length) RMMemset(__dest,0,__length)
-#define tta_memcpy(__dest,__source,__length) RMMemcpy(__dest,__source,__length)
-#define tta_malloc RMMalloc
-#define tta_free RMFree
 #else // NOT CARIBBEAN
 typedef int (HANDLE);
 #define INVALID_HANDLE_VALUE (-1)
@@ -74,15 +70,6 @@ typedef int (HANDLE);
 #define tta_write(__handle,__buffer,__size,__result) (__result=write(__handle,__buffer,__size))
 #define tta_seek(__handle,__offset) lseek64(__handle,__offset,SEEK_SET)
 #define tta_reset(__handle) lseek64(__handle,0,SEEK_SET)
-#define tta_memclear(__dest,__length) memset(__dest,0,__length)
-#define tta_memcpy(__dest,__source,__length) memcpy(__dest,__source,__length)
-#if defined(__APPLE__)
-#define tta_malloc(__length) _aligned_alloc(16,__length)
-#else
-#define tta_malloc(__length) aligned_alloc(16,__length)
-#endif
-#define tta_free free
-
 #define tta_cpuid(func,ax,bx,cx,dx) \
 	__asm__ __volatile__ ("cpuid": \
 	"=a" (ax), "=b" (bx), "=c" (cx), "=d" (dx) : "a" (func));
@@ -105,11 +92,6 @@ typedef wchar_t (TTAwchar);
 #define tta_write(__handle,__buffer,__size,__result) WriteFile(__handle,__buffer,__size,(LPDWORD)&(__result),NULL)
 #define tta_seek(__handle,__offset) SetFilePointer(__handle,(LONG)__offset,(PLONG)&__offset+1,FILE_BEGIN)
 #define tta_reset(__handle) SetFilePointer(__handle,0,0,FILE_BEGIN)
-#define tta_memclear(__dest,__length) ZeroMemory(__dest,__length)
-#define tta_memcpy(__dest,__source,__length) CopyMemory(__dest,__source,__length)
-#define tta_malloc(__length) _aligned_malloc(__length, 16)
-#define tta_free(__dest) _aligned_free(__dest)
-
 #define tta_cpuid(func,ax,bx,cx,dx) { \
 	int cpuid[4]; \
 	__cpuid(cpuid,func); ax=cpuid[0]; bx=cpuid[1]; cx=cpuid[2]; dx=cpuid[3]; }

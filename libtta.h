@@ -32,6 +32,7 @@
 #endif
 
 #include <functional>
+#include <new>
 #include <string>
 
 #define MAX_DEPTH 3
@@ -67,6 +68,10 @@ typedef RMuint8 (uint8_t);
 typedef RMuint16 (uint16_t);
 typedef RMuint32 (uint32_t);
 typedef RMuint64 (uint64_t);
+#define tta_memclear(__dest,__length) RMMemset(__dest,0,__length)
+#define tta_memcpy(__dest,__source,__length) RMMemcpy(__dest,__source,__length)
+#define tta_malloc RMMalloc
+#define tta_free RMFree
 #else // GNUC
 // typedef int8_t (int8_t);
 // typedef int16_t (int16_t);
@@ -76,6 +81,14 @@ typedef RMuint64 (uint64_t);
 // typedef uint16_t (uint16_t);
 // typedef uint32_t (uint32_t);
 // typedef uint64_t (uint64_t);
+#define tta_memclear(__dest,__length) memset(__dest,0,__length)
+#define tta_memcpy(__dest,__source,__length) memcpy(__dest,__source,__length)
+#if defined(__APPLE__)
+#define tta_malloc(__length) _aligned_alloc(16,__length)
+#else
+#define tta_malloc(__length) aligned_alloc(16,__length)
+#endif
+#define tta_free free
 #endif
 #else // MSVC
 typedef __int8 (int8_t);
@@ -86,6 +99,10 @@ typedef unsigned __int8 (uint8_t);
 typedef unsigned __int16 (uint16_t);
 typedef unsigned __int32 (uint32_t);
 typedef unsigned __int64 (uint64_t);
+#define tta_memclear(__dest,__length) ZeroMemory(__dest,__length)
+#define tta_memcpy(__dest,__source,__length) CopyMemory(__dest,__source,__length)
+#define tta_malloc(__length) _aligned_malloc(__length, 16)
+#define tta_free(__dest) _aligned_free(__dest)
 #endif
 
 typedef struct {
@@ -214,6 +231,22 @@ namespace tta
 		uint32_t skip_id3v2();
 	};
 
+	template<typename T>
+	class TTA_EXTERN_API aligned {
+	public:
+		explicit aligned(fileio *io) {
+			m_ptr = tta_malloc(sizeof(T));
+			m_obj = new(m_ptr)T(io);
+		}
+		virtual ~aligned() {
+			m_obj->~T();
+			tta_free(m_ptr);
+		}
+		T* Unwrap() { return m_obj; }
+	private:
+		T* m_obj;
+		void* m_ptr;
+	};
 
 	class codec_base {
 	public:
@@ -259,6 +292,7 @@ namespace tta
 		bool read_seek_table();
 		void frame_init(uint32_t frame, bool seek_needed);
 	}; // class decoder
+
 
 	/////////////////////// TTA encoder functions /////////////////////////
 	class TTA_EXTERN_API encoder : public codec_base {

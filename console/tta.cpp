@@ -12,7 +12,6 @@
 #include "../libtta.h"
 #include "../config.h"
 #include "tta.h"
-#include <new>
 
 using namespace tta;
 
@@ -325,8 +324,6 @@ int test_libtta_compatibility() {
 /////////////////////////////////////////////////////////////////////////////
 
 int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& password) {
-	encoder *TTA;
-	void *aligned_encoder;
 	uint32_t data_size;
 	WAVE_hdr wave_hdr;
 	tta_file_io io(outfile);
@@ -351,9 +348,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 		return -1;
 	}
 
-	aligned_encoder = tta_malloc(sizeof(encoder));
-	TTA = new(aligned_encoder) encoder(&io);
-
+	aligned<encoder> aligned_encoder(&io);
 	smp_size = (wave_hdr.num_channels * ((wave_hdr.bits_per_sample + 7) / 8));
 	info.nch = wave_hdr.num_channels;
 	info.bps = wave_hdr.bits_per_sample;
@@ -389,7 +384,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 	info.samples = data_size / smp_size;
 
 	try {
-		TTA->init(&info, 0, password);
+		aligned_encoder.Unwrap()->init(&info, 0, password);
 
 		while (data_size > 0) {
 			buf_size = (buf_size < data_size) ? buf_size : data_size;
@@ -398,21 +393,19 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 				throw exception(READ_ERROR);
 
 			if (len) {
-				TTA->process_stream(buffer, len, tta_callback);
+				aligned_encoder.Unwrap()->process_stream(buffer, len, tta_callback);
 			} else break;
 
 			data_size -= len;
 		}
 
-		TTA->finalize();
+		aligned_encoder.Unwrap()->finalize();
 		ret = 0;
 	} catch (exception& ex) {
 		tta_strerror(ex.code());
 	}
 
 done:
-	TTA->~encoder();
-	tta_free(aligned_encoder);
 	if (buffer) tta_free(buffer);
 
 	return ret;
@@ -422,8 +415,6 @@ done:
 /////////////////////////////////////////////////////////////////////////////
 
 int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
-	decoder *TTA;
-	void *aligned_decoder;
 	WAVE_hdr wave_hdr;
 	tta_file_io io(infile);
 	uint8_t *buffer = NULL;
@@ -432,11 +423,10 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	TTA_info info;
 	int ret = -1;
 
-	aligned_decoder = tta_malloc(sizeof(decoder));
-	TTA = new(aligned_decoder)decoder(&io);
+	aligned<decoder> aligned_decoder(&io);
 
 	try {
-		TTA->init(&info, 0, password);
+		aligned_decoder.Unwrap()->init(&info, 0, password);
 	} catch (exception& ex) {
 		tta_strerror(ex.code());
 		goto done;
@@ -475,7 +465,7 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 
 	try {
 		while (1) {
-			len = TTA->process_stream(buffer, buf_size, tta_callback);
+			len = aligned_decoder.Unwrap()->process_stream(buffer, buf_size, tta_callback);
 			if (len) {
 				if (!tta_write(outfile, buffer, len * smp_size, res) || !res)
 					throw exception(WRITE_ERROR);
@@ -487,8 +477,6 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	}
 
 done:
-	TTA->~decoder();
-	tta_free(aligned_decoder);
 	if (buffer) tta_free(buffer);
 
 	return ret;
