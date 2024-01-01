@@ -325,7 +325,7 @@ int test_libtta_compatibility() {
 /////////////////////////////////////////////////////////////////////////////
 
 int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& password) {
-	tta_encoder *TTA;
+	encoder *TTA;
 	void *aligned_encoder;
 	uint32_t data_size;
 	WAVE_hdr wave_hdr;
@@ -351,8 +351,8 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 		return -1;
 	}
 
-	aligned_encoder = tta_malloc(sizeof(tta_encoder));
-	TTA = new(aligned_encoder) tta_encoder(&io);
+	aligned_encoder = tta_malloc(sizeof(encoder));
+	TTA = new(aligned_encoder) encoder(&io);
 
 	smp_size = (wave_hdr.num_channels * ((wave_hdr.bits_per_sample + 7) / 8));
 	info.nch = wave_hdr.num_channels;
@@ -411,7 +411,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 	}
 
 done:
-	TTA->~tta_encoder();
+	TTA->~encoder();
 	tta_free(aligned_encoder);
 	if (buffer) tta_free(buffer);
 
@@ -422,7 +422,7 @@ done:
 /////////////////////////////////////////////////////////////////////////////
 
 int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
-	tta_decoder *TTA;
+	decoder *TTA;
 	void *aligned_decoder;
 	WAVE_hdr wave_hdr;
 	tta_file_io io(infile);
@@ -432,8 +432,8 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	TTA_info info;
 	int ret = -1;
 
-	aligned_decoder = tta_malloc(sizeof(tta_decoder));
-	TTA = new(aligned_decoder)tta_decoder(&io);
+	aligned_decoder = tta_malloc(sizeof(decoder));
+	TTA = new(aligned_decoder)decoder(&io);
 
 	try {
 		TTA->init(&info, 0, password);
@@ -487,7 +487,7 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	}
 
 done:
-	TTA->~tta_decoder();
+	TTA->~decoder();
 	tta_free(aligned_decoder);
 	if (buffer) tta_free(buffer);
 

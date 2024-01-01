@@ -242,10 +242,10 @@ namespace tta
 	};
 
 	/////////////////////// TTA decoder functions /////////////////////////
-	class TTA_EXTERN_API tta_decoder : public codec_base {
+	class TTA_EXTERN_API decoder : public codec_base {
 	public:
-		explicit tta_decoder(fileio *io);
-		virtual ~tta_decoder();
+		explicit decoder(fileio *io);
+		virtual ~decoder();
 
 		void init(TTA_info *info, uint64_t pos, const std::string& password) override;
 		void frame_reset(uint32_t frame, fileio *io);
@@ -258,13 +258,13 @@ namespace tta
 		bool seek_allowed;	// seek table flag
 		bool read_seek_table();
 		void frame_init(uint32_t frame, bool seek_needed);
-	}; // class tta_decoder
+	}; // class decoder
 
 	/////////////////////// TTA encoder functions /////////////////////////
-	class TTA_EXTERN_API tta_encoder : public codec_base {
+	class TTA_EXTERN_API encoder : public codec_base {
 	public:
-		explicit tta_encoder(fileio *io);
-		virtual ~tta_encoder();
+		explicit encoder(fileio *io);
+		virtual ~encoder();
 
 		void init(TTA_info *info, uint64_t pos, const std::string& password) override;
 		void frame_reset(uint32_t frame, fileio *io);
@@ -278,7 +278,7 @@ namespace tta
 
 		void write_seek_table();
 		void frame_init(uint32_t frame);
-	}; // class tta_encoder
+	}; // class encoder
 
 	//////////////////////// TTA exception class //////////////////////////
 	class exception : public std::exception {
