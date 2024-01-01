@@ -144,11 +144,11 @@ namespace tta
 	// architecture type compatibility
 	TTA_EXTERN_API CPU_ARCH_TYPE binary_version();
 
-	class TTA_ALIGNED(32) codec // avx requires alignment of 32 bytes (for fst)
+	class TTA_ALIGNED(32) codec_state // avx requires alignment of 32 bytes (for fst)
 	{
 	public:
-		explicit codec();
-		virtual ~codec();
+		explicit codec_state();
+		virtual ~codec_state();
 		void init(uint64_t data, int32_t shift, uint32_t k0, uint32_t k1);
 		__inline void decode(int32_t* value);
 		__inline void encode(int32_t* value);
@@ -196,7 +196,7 @@ namespace tta
 		__inline uint32_t read_uint16();
 		__inline uint32_t read_uint32();
 		__inline bool read_crc32();
-		__inline int32_t get_value(codec& c);
+		__inline int32_t get_value(codec_state& c);
 		__inline uint32_t count() const;
 		uint32_t read_tta_header(TTA_info *info);
 		uint32_t write_tta_header(TTA_info *info);
@@ -206,7 +206,7 @@ namespace tta
 		__inline void write_uint16(uint32_t value);
 		__inline void write_uint32(uint32_t value);
 		__inline void write_crc32();
-		__inline void put_value(codec& c, int32_t value);
+		__inline void put_value(codec_state& c, int32_t value);
 		__inline void flush_bit_cache();
 
 	private:
@@ -230,10 +230,10 @@ namespace tta
 		uint32_t get_rate();
 
 	protected:
-		codec m_decoder[MAX_NCH]; // decoder (1 per channel)
+		codec_state m_decoder[MAX_NCH]; // decoder (1 per channel)
 		uint64_t m_data; // decoder initialization data
 		bufio m_bufio;
-		codec *m_decoder_last;
+		codec_state *m_decoder_last;
 		uint64_t *seek_table; // the playing position table
 		uint32_t format;	// tta data format
 		uint32_t rate;	// bitrate (kbps)
@@ -264,10 +264,10 @@ namespace tta
 		uint32_t get_rate();
 
 	protected:
-		codec m_encoder[MAX_NCH]; // encoder (1 per channel)
+		codec_state m_encoder[MAX_NCH]; // encoder (1 per channel)
 		uint64_t m_data; // encoder initialization data
 		bufio m_bufio;
-		codec *m_encoder_last;
+		codec_state *m_encoder_last;
 		uint64_t *seek_table; // the playing position table
 		uint32_t format;	// tta data format
 		uint32_t rate;	// bitrate (kbps)
