@@ -383,7 +383,7 @@ uint32_t bufio::skip_id3v2() {
 	return (size + 10);
 }
 
-uint32_t bufio::read_tta_header(TTA_info *info) {
+uint32_t bufio::read_tta_header(info *i) {
 	uint32_t size = skip_id3v2();
 	this->reset();
 
@@ -392,11 +392,11 @@ uint32_t bufio::read_tta_header(TTA_info *info) {
 		'A' != read_byte() ||
 		'1' != read_byte()) throw exception(FORMAT_ERROR);
 
-	info->format = read_uint16();
-	info->nch = read_uint16();
-	info->bps = read_uint16();
-	info->sps = read_uint32();
-	info->samples = read_uint32();
+	i->format = read_uint16();
+	i->nch = read_uint16();
+	i->bps = read_uint16();
+	i->sps = read_uint32();
+	i->samples = read_uint32();
 
 	if (read_crc32())
 		throw exception(FILE_ERROR);
@@ -405,7 +405,7 @@ uint32_t bufio::read_tta_header(TTA_info *info) {
 	return size;
 }
 
-uint32_t bufio::write_tta_header(TTA_info *info) {
+uint32_t bufio::write_tta_header(info *i) {
 	this->reset();
 	// write TTA1 signature
 	write_byte('T');
@@ -413,11 +413,11 @@ uint32_t bufio::write_tta_header(TTA_info *info) {
 	write_byte('A');
 	write_byte('1');
 
-	write_uint16(info->format);
-	write_uint16(info->nch);
-	write_uint16(info->bps);
-	write_uint32(info->sps);
-	write_uint32(info->samples);
+	write_uint16(i->format);
+	write_uint16(i->nch);
+	write_uint16(i->bps);
+	write_uint32(i->sps);
+	write_uint32(i->samples);
 
 	write_crc32();
 	return 22; // sizeof TTA1 header
@@ -667,34 +667,34 @@ void decoder::set_position(uint32_t seconds, uint32_t *new_pos) {
 	frame_init(frame, true);
 } // set_position
 
-void decoder::init(TTA_info *info, uint64_t pos, const std::string& password) {
+void decoder::init(info *i, uint64_t pos, const std::string& password) {
 	// set start position if required
 	if (pos && m_bufio.io()->Seek(pos) < 0)
 		throw exception(SEEK_ERROR);
 
 	m_bufio.reader_start();
-	pos += m_bufio.read_tta_header(info);
+	pos += m_bufio.read_tta_header(i);
 
 	// check for supported formats
-	if (info->format > 2 ||
-		info->bps < MIN_BPS ||
-		info->bps > MAX_BPS ||
-		info->nch > MAX_NCH)
+	if (i->format > 2 ||
+		i->bps < MIN_BPS ||
+		i->bps > MAX_BPS ||
+		i->nch > MAX_NCH)
 		throw exception(FORMAT_ERROR);
 
 	// check for required data is present
-	if (info->format == FORMAT_ENCRYPTED) {
+	if (i->format == FORMAT_ENCRYPTED) {
 		if (password == "")
 			throw exception(PASSWORD_ERROR);
 		compute_key_digits(password.c_str(),  password.size(), &m_data); // set password
 	}
 
 	offset = pos; // size of headers
-	format = info->format;
-	depth = (info->bps + 7) / 8;
-	flen_std = MUL_FRAME_TIME(info->sps);
-	flen_last = info->samples % flen_std;
-	frames = info->samples / flen_std + (flen_last ? 1 : 0);
+	format = i->format;
+	depth = (i->bps + 7) / 8;
+	flen_std = MUL_FRAME_TIME(i->sps);
+	flen_last = i->samples % flen_std;
+	frames = i->samples / flen_std + (flen_last ? 1 : 0);
 	if (!flen_last) flen_last = flen_std;
 	rate = 0;
 
@@ -704,7 +704,7 @@ void decoder::init(TTA_info *info, uint64_t pos, const std::string& password) {
 		throw exception(MEMORY_ERROR);
 
 	seek_allowed = read_seek_table();
-	m_codec_last = m_codec + info->nch - 1;
+	m_codec_last = m_codec + i->nch - 1;
 
 	frame_init(0, false);
 } // init
@@ -901,12 +901,12 @@ void encoder::frame_reset(uint32_t frame, fileio *io) {
 	frame_init(frame);
 } // frame_reset
 
-void encoder::init(TTA_info *info, uint64_t pos, const std::string& password) {
+void encoder::init(info *i, uint64_t pos, const std::string& password) {
 	// check for supported formats
-	if (info->format > 2 ||
-		info->bps < MIN_BPS ||
-		info->bps > MAX_BPS ||
-		info->nch > MAX_NCH)
+	if (i->format > 2 ||
+		i->bps < MIN_BPS ||
+		i->bps > MAX_BPS ||
+		i->nch > MAX_NCH)
 		throw exception(FORMAT_ERROR);
 
 	// set start position if required
@@ -914,21 +914,21 @@ void encoder::init(TTA_info *info, uint64_t pos, const std::string& password) {
 		throw exception(SEEK_ERROR);
 
 	if (password == "") {
-		info->format = FORMAT_SIMPLE;
+		i->format = FORMAT_SIMPLE;
 	} else {
-		info->format = FORMAT_ENCRYPTED;
+		i->format = FORMAT_ENCRYPTED;
 		compute_key_digits(password.c_str(),  password.size(), &m_data); // set password
 	}
 
 	m_bufio.writer_start();
-	pos += m_bufio.write_tta_header(info);
+	pos += m_bufio.write_tta_header(i);
 
 	offset = pos; // size of headers
-	format = info->format;
-	depth = (info->bps + 7) / 8;
-	flen_std = MUL_FRAME_TIME(info->sps);
-	flen_last = info->samples % flen_std;
-	frames = info->samples / flen_std + (flen_last ? 1 : 0);
+	format = i->format;
+	depth = (i->bps + 7) / 8;
+	flen_std = MUL_FRAME_TIME(i->sps);
+	flen_last = i->samples % flen_std;
+	frames = i->samples / flen_std + (flen_last ? 1 : 0);
 	if (!flen_last) flen_last = flen_std;
 	rate = 0;
 
@@ -939,7 +939,7 @@ void encoder::init(TTA_info *info, uint64_t pos, const std::string& password) {
 
 	m_bufio.writer_skip_bytes((frames + 1) * 4);
 
-	m_codec_last = m_codec + info->nch - 1;
+	m_codec_last = m_codec + i->nch - 1;
 	shift_bits = (4 - depth) << 3;
 
 	frame_init(0);

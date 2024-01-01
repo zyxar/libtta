@@ -329,7 +329,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 	tta_file_io io(outfile);
 	uint8_t *buffer = NULL;
 	uint32_t buf_size, smp_size, len, res;
-	TTA_info info;
+	info i;
 	int ret = -1;
 
 	if (read_wav_hdr(infile, &wave_hdr, &data_size)) {
@@ -350,10 +350,10 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 
 	aligned<encoder> aligned_encoder(&io);
 	smp_size = (wave_hdr.num_channels * ((wave_hdr.bits_per_sample + 7) / 8));
-	info.nch = wave_hdr.num_channels;
-	info.bps = wave_hdr.bits_per_sample;
-	info.sps = wave_hdr.sample_rate;
-	// info.format = TTA_FORMAT_SIMPLE OR TTA_FORMAT_ENCRYPTED; // ignore; set by init() depending on password
+	i.nch = wave_hdr.num_channels;
+	i.bps = wave_hdr.bits_per_sample;
+	i.sps = wave_hdr.sample_rate;
+	// i.format = TTA_FORMAT_SIMPLE OR TTA_FORMAT_ENCRYPTED; // ignore; set by init() depending on password
 
 	buf_size = PCM_BUFFER_LENGTH * smp_size;
 
@@ -381,10 +381,10 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 		goto done;
 	}
 
-	info.samples = data_size / smp_size;
+	i.samples = data_size / smp_size;
 
 	try {
-		aligned_encoder.Unwrap()->init(&info, 0, password);
+		aligned_encoder.Unwrap()->init(&i, 0, password);
 
 		while (data_size > 0) {
 			buf_size = (buf_size < data_size) ? buf_size : data_size;
@@ -420,19 +420,19 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	uint8_t *buffer = NULL;
 	uint32_t buf_size, smp_size, data_size, res;
 	int32_t len;
-	TTA_info info;
+	info i;
 	int ret = -1;
 
 	aligned<decoder> aligned_decoder(&io);
 
 	try {
-		aligned_decoder.Unwrap()->init(&info, 0, password);
+		aligned_decoder.Unwrap()->init(&i, 0, password);
 	} catch (exception& ex) {
 		tta_strerror(ex.code());
 		goto done;
 	}
 
-	smp_size = info.nch * ((info.bps + 7) / 8);
+	smp_size = i.nch * ((i.bps + 7) / 8);
 	buf_size = PCM_BUFFER_LENGTH * smp_size;
 
 	// allocate memory for PCM buffer
@@ -443,7 +443,7 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	}
 
 	// Fill in WAV header
-	data_size = info.samples * smp_size;
+	data_size = i.samples * smp_size;
 	tta_memclear(&wave_hdr, sizeof (wave_hdr));
 	wave_hdr.chunk_id = RIFF_SIGN;
 	wave_hdr.chunk_size = data_size + 36;
@@ -451,10 +451,10 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	wave_hdr.subchunk_id = fmt_SIGN;
 	wave_hdr.subchunk_size = 16;
 	wave_hdr.audio_format = 1;
-	wave_hdr.num_channels = (uint16_t) info.nch;
-	wave_hdr.sample_rate = info.sps;
-	wave_hdr.bits_per_sample = info.bps;
-	wave_hdr.byte_rate = info.sps * smp_size;
+	wave_hdr.num_channels = (uint16_t) i.nch;
+	wave_hdr.sample_rate = i.sps;
+	wave_hdr.bits_per_sample = i.bps;
+	wave_hdr.byte_rate = i.sps * smp_size;
 	wave_hdr.block_align = (uint16_t) smp_size;
 
 	// Write WAVE header

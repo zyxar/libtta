@@ -105,13 +105,6 @@ typedef unsigned __int64 (uint64_t);
 #define tta_free(__dest) _aligned_free(__dest)
 #endif
 
-typedef struct {
-	uint32_t format;	// audio format
-	uint32_t nch;	// number of channels
-	uint32_t bps;	// bits per sample
-	uint32_t sps;	// samplerate (sps)
-	uint32_t samples;	// data length in samples
-} TTA_ALIGNED(16) TTA_info;
 
 typedef struct {
 	int32_t index;
@@ -154,6 +147,14 @@ namespace tta
 		CPU_ARCH_ARM,
 		CPU_ARCH_AARCH64
 	} CPU_ARCH_TYPE;
+
+	struct TTA_ALIGNED(16) info {
+		uint32_t format;  // audio format
+		uint32_t nch;     // number of channels
+		uint32_t bps;     // bits per sample
+		uint32_t sps;     // samplerate (sps)
+		uint32_t samples; // data length in samples
+	};
 
 	// progress callback
 	typedef std::function<void(uint32_t, uint32_t, uint32_t)> CALLBACK;
@@ -215,8 +216,8 @@ namespace tta
 		__inline bool read_crc32();
 		__inline int32_t get_value(codec_state& c);
 		__inline uint32_t count() const;
-		uint32_t read_tta_header(TTA_info *info);
-		uint32_t write_tta_header(TTA_info *info);
+		uint32_t read_tta_header(info *i);
+		uint32_t write_tta_header(info *i);
 		void writer_skip_bytes(uint32_t size);
 		void writer_done();
 		__inline void write_byte(uint32_t value);
@@ -253,7 +254,7 @@ namespace tta
 		explicit codec_base(fileio* io);
 		virtual ~codec_base();
 
-		virtual void init(TTA_info *info, uint64_t pos, const std::string& password) = 0;
+		virtual void init(info *i, uint64_t pos, const std::string& password) = 0;
 		virtual uint32_t get_rate() = 0;
 
 	protected:
@@ -280,7 +281,7 @@ namespace tta
 		explicit decoder(fileio *io);
 		virtual ~decoder();
 
-		void init(TTA_info *info, uint64_t pos, const std::string& password) override;
+		void init(info *i, uint64_t pos, const std::string& password) override;
 		void frame_reset(uint32_t frame, fileio *io);
 		int process_stream(uint8_t *output, uint32_t out_bytes, CALLBACK callback=nullptr);
 		int process_frame(uint32_t in_bytes, uint8_t *output, uint32_t out_bytes);
@@ -300,7 +301,7 @@ namespace tta
 		explicit encoder(fileio *io);
 		virtual ~encoder();
 
-		void init(TTA_info *info, uint64_t pos, const std::string& password) override;
+		void init(info *i, uint64_t pos, const std::string& password) override;
 		void frame_reset(uint32_t frame, fileio *io);
 		void process_stream(uint8_t *input, uint32_t in_bytes, CALLBACK callback=nullptr);
 		void process_frame(uint8_t *input, uint32_t in_bytes);
