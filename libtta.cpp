@@ -621,6 +621,12 @@ void bufio::flush_bit_cache() {
 	write_crc32();
 }
 
+codec_base::codec_base(fileio* io) : m_data(0), m_bufio(io), seek_table(nullptr) {}
+codec_base::~codec_base() {
+	if (seek_table) tta_free(seek_table);
+}
+
+
 //////////////////////////// decoder functions //////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
@@ -645,7 +651,7 @@ bool tta_decoder::read_seek_table() {
 
 void tta_decoder::frame_init(uint32_t frame, bool seek_needed) {
 	int32_t shift = flt_set[depth - 1];
-	codec_state *dec = m_decoder;
+	codec_state *dec = m_codec;
 
 	if (frame >= frames) return;
 
@@ -664,7 +670,7 @@ void tta_decoder::frame_init(uint32_t frame, bool seek_needed) {
 
 	do {
 		dec->init(m_data, shift, 10, 10); // init entropy decoder
-	} while (++dec <= m_decoder_last);
+	} while (++dec <= m_codec_last);
 
 	fpos = 0;
 
@@ -724,14 +730,14 @@ void tta_decoder::init(TTA_info *info, uint64_t pos, const std::string& password
 		throw exception(MEMORY_ERROR);
 
 	seek_allowed = read_seek_table();
-	m_decoder_last = m_decoder + info->nch - 1;
+	m_codec_last = m_codec + info->nch - 1;
 
 	frame_init(0, false);
 } // init
 
 int tta_decoder::process_stream(uint8_t *output, uint32_t out_bytes,
 	CALLBACK callback) {
-	codec_state *dec = m_decoder;
+	codec_state *dec = m_codec;
 	uint8_t *ptr = output;
 	int32_t cache[MAX_NCH];
 	int32_t *cp = cache;
@@ -745,13 +751,13 @@ int tta_decoder::process_stream(uint8_t *output, uint32_t out_bytes,
 
 		dec->decode(&value);
 
-		if (dec < m_decoder_last) {
+		if (dec < m_codec_last) {
 			*cp++ = value;
 			dec++;
 		} else {
 			*cp = value;
 
-			if (m_decoder_last == m_decoder) {
+			if (m_codec_last == m_codec) {
 				WRITE_BUFFER(cp, ptr, depth);
 			} else {
 				end = cp;
@@ -773,7 +779,7 @@ int tta_decoder::process_stream(uint8_t *output, uint32_t out_bytes,
 			cp = cache;
 			fpos++;
 			ret++;
-			dec = m_decoder;
+			dec = m_codec;
 		}
 
 		if (fpos == flen) {
@@ -802,7 +808,7 @@ int tta_decoder::process_stream(uint8_t *output, uint32_t out_bytes,
 
 int tta_decoder::process_frame(uint32_t in_bytes, uint8_t *output,
 	uint32_t out_bytes) {
-	codec_state *dec = m_decoder;
+	codec_state *dec = m_codec;
 	uint8_t *ptr = output;
 	int32_t cache[MAX_NCH];
 	int32_t *cp = cache;
@@ -816,13 +822,13 @@ int tta_decoder::process_frame(uint32_t in_bytes, uint8_t *output,
 
 		dec->decode(&value);
 
-		if (dec < m_decoder_last) {
+		if (dec < m_codec_last) {
 			*cp++ = value;
 			dec++;
 		} else {
 			*cp = value;
 
-			if (m_decoder_last == m_decoder) {
+			if (m_codec_last == m_codec) {
 				WRITE_BUFFER(cp, ptr, depth);
 			} else {
 				end = cp;
@@ -845,7 +851,7 @@ int tta_decoder::process_frame(uint32_t in_bytes, uint8_t *output,
 			cp = cache;
 			fpos++;
 			ret++;
-			dec = m_decoder;
+			dec = m_codec;
 		}
 
 		if (fpos == flen ||
@@ -866,12 +872,10 @@ int tta_decoder::process_frame(uint32_t in_bytes, uint8_t *output,
 
 uint32_t tta_decoder::get_rate() { return rate; }
 
-tta_decoder::tta_decoder(fileio *io) : seek_allowed(false), m_data(0), m_bufio(io), seek_table(nullptr) {
+tta_decoder::tta_decoder(fileio *io) : codec_base(io), seek_allowed(false) {
 } // tta_decoder
 
-tta_decoder::~tta_decoder() {
-	if (seek_table) tta_free(seek_table);
-} // ~tta_decoder
+tta_decoder::~tta_decoder() {} // ~tta_decoder
 
 ///////////////////////////// encoder functions /////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -899,7 +903,7 @@ void tta_encoder::write_seek_table() {
 
 void tta_encoder::frame_init(uint32_t frame) {
 	int32_t shift = flt_set[depth - 1];
-	codec_state *enc = m_encoder;
+	codec_state *enc = m_codec;
 
 	if (frame >= frames) return;
 
@@ -911,7 +915,7 @@ void tta_encoder::frame_init(uint32_t frame) {
 
 	do {
 		enc->init(m_data, shift, 10, 10); // init entropy encoder
-	} while (++enc <= m_encoder_last);
+	} while (++enc <= m_codec_last);
 
 	fpos = 0;
 
@@ -962,7 +966,7 @@ void tta_encoder::init(TTA_info *info, uint64_t pos, const std::string& password
 
 	m_bufio.writer_skip_bytes((frames + 1) * 4);
 
-	m_encoder_last = m_encoder + info->nch - 1;
+	m_codec_last = m_codec + info->nch - 1;
 	shift_bits = (4 - depth) << 3;
 
 	frame_init(0);
@@ -975,7 +979,7 @@ void tta_encoder::finalize() {
 
 void tta_encoder::process_stream(uint8_t *input, uint32_t in_bytes,
 	CALLBACK callback) {
-	codec_state *enc = m_encoder;
+	codec_state *enc = m_codec;
 	uint8_t *ptr = input;
 	uint8_t *pend = input + in_bytes;
 	int32_t curr, next, temp;
@@ -994,8 +998,8 @@ void tta_encoder::process_stream(uint8_t *input, uint32_t in_bytes,
 		}
 
 		// transform data
-		if (m_encoder_last != m_encoder) {
-			if (enc < m_encoder_last) {
+		if (m_codec_last != m_codec) {
+			if (enc < m_codec_last) {
 				curr = res = next - curr;
 			} else curr -= res / 2;
 		}
@@ -1004,10 +1008,10 @@ void tta_encoder::process_stream(uint8_t *input, uint32_t in_bytes,
 
 		m_bufio.put_value(*enc, curr);
 
-		if (enc < m_encoder_last) {
+		if (enc < m_codec_last) {
 			enc++;
 		} else {
-			enc = m_encoder;
+			enc = m_codec;
 			fpos++;
 		}
 
@@ -1026,7 +1030,7 @@ void tta_encoder::process_stream(uint8_t *input, uint32_t in_bytes,
 } // process_stream
 
 void tta_encoder::process_frame(uint8_t *input, uint32_t in_bytes) {
-	codec_state *enc = m_encoder;
+	codec_state *enc = m_codec;
 	uint8_t *ptr = input;
 	uint8_t *pend = input + in_bytes;
 	int32_t curr, next, temp;
@@ -1045,8 +1049,8 @@ void tta_encoder::process_frame(uint8_t *input, uint32_t in_bytes) {
 		}
 
 		// transform data
-		if (m_encoder_last != m_encoder) {
-			if (enc < m_encoder_last) {
+		if (m_codec_last != m_codec) {
+			if (enc < m_codec_last) {
 				curr = res = next - curr;
 			} else curr -= res / 2;
 		}
@@ -1055,10 +1059,10 @@ void tta_encoder::process_frame(uint8_t *input, uint32_t in_bytes) {
 
 		m_bufio.put_value(*enc, curr);
 
-		if (enc < m_encoder_last) {
+		if (enc < m_codec_last) {
 			enc++;
 		} else {
-			enc = m_encoder;
+			enc = m_codec;
 			fpos++;
 		}
 
@@ -1075,12 +1079,10 @@ void tta_encoder::process_frame(uint8_t *input, uint32_t in_bytes) {
 
 uint32_t tta_encoder::get_rate() { return rate; }
 
-tta_encoder::tta_encoder(fileio *io) : m_data(0), m_bufio(io), seek_table(nullptr) {
+tta_encoder::tta_encoder(fileio *io) : codec_base(io) {
 } // tta_encoder
 
-tta_encoder::~tta_encoder() {
-	if (seek_table) tta_free(seek_table);
-} // ~tta_encoder
+tta_encoder::~tta_encoder() {} // ~tta_encoder
 
 }
 /* eof */

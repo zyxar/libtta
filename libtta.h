@@ -214,26 +214,20 @@ namespace tta
 		uint32_t skip_id3v2();
 	};
 
-	/////////////////////// TTA decoder functions /////////////////////////
-	class TTA_EXTERN_API tta_decoder {
+
+	class codec_base {
 	public:
-		bool seek_allowed;	// seek table flag
+		explicit codec_base(fileio* io);
+		virtual ~codec_base();
 
-		explicit tta_decoder(fileio *io);
-		virtual ~tta_decoder();
-
-		void init(TTA_info *info, uint64_t pos, const std::string& password);
-		void frame_reset(uint32_t frame, fileio *io);
-		int process_stream(uint8_t *output, uint32_t out_bytes, CALLBACK callback=nullptr);
-		int process_frame(uint32_t in_bytes, uint8_t *output, uint32_t out_bytes);
-		void set_position(uint32_t seconds, uint32_t *new_pos);
-		uint32_t get_rate();
+		virtual void init(TTA_info *info, uint64_t pos, const std::string& password) = 0;
+		virtual uint32_t get_rate() = 0;
 
 	protected:
-		codec_state m_decoder[MAX_NCH]; // decoder (1 per channel)
-		uint64_t m_data; // decoder initialization data
+		codec_state m_codec[MAX_NCH]; // codec (1 per channel)
+		uint64_t m_data; // codec initialization data
 		bufio m_bufio;
-		codec_state *m_decoder_last;
+		codec_state *m_codec_last;
 		uint64_t *seek_table; // the playing position table
 		uint32_t format;	// tta data format
 		uint32_t rate;	// bitrate (kbps)
@@ -245,40 +239,41 @@ namespace tta
 		uint32_t flen;	// current frame length in samples
 		uint32_t fnum;	// currently playing frame index
 		uint32_t fpos;	// the current position in frame
+	};
 
+	/////////////////////// TTA decoder functions /////////////////////////
+	class TTA_EXTERN_API tta_decoder : public codec_base {
+	public:
+		explicit tta_decoder(fileio *io);
+		virtual ~tta_decoder();
+
+		void init(TTA_info *info, uint64_t pos, const std::string& password) override;
+		void frame_reset(uint32_t frame, fileio *io);
+		int process_stream(uint8_t *output, uint32_t out_bytes, CALLBACK callback=nullptr);
+		int process_frame(uint32_t in_bytes, uint8_t *output, uint32_t out_bytes);
+		void set_position(uint32_t seconds, uint32_t *new_pos);
+		uint32_t get_rate() override;
+
+	protected:
+		bool seek_allowed;	// seek table flag
 		bool read_seek_table();
 		void frame_init(uint32_t frame, bool seek_needed);
 	}; // class tta_decoder
 
 	/////////////////////// TTA encoder functions /////////////////////////
-	class TTA_EXTERN_API tta_encoder {
+	class TTA_EXTERN_API tta_encoder : public codec_base {
 	public:
 		explicit tta_encoder(fileio *io);
 		virtual ~tta_encoder();
 
-		void init(TTA_info *info, uint64_t pos, const std::string& password);
+		void init(TTA_info *info, uint64_t pos, const std::string& password) override;
 		void frame_reset(uint32_t frame, fileio *io);
 		void process_stream(uint8_t *input, uint32_t in_bytes, CALLBACK callback=nullptr);
 		void process_frame(uint8_t *input, uint32_t in_bytes);
 		void finalize();
-		uint32_t get_rate();
+		uint32_t get_rate() override;
 
 	protected:
-		codec_state m_encoder[MAX_NCH]; // encoder (1 per channel)
-		uint64_t m_data; // encoder initialization data
-		bufio m_bufio;
-		codec_state *m_encoder_last;
-		uint64_t *seek_table; // the playing position table
-		uint32_t format;	// tta data format
-		uint32_t rate;	// bitrate (kbps)
-		uint64_t offset;	// data start position (header size, bytes)
-		uint32_t frames;	// total count of frames
-		uint32_t depth;	// bytes per sample
-		uint32_t flen_std;	// default frame length in samples
-		uint32_t flen_last;	// last frame length in samples
-		uint32_t flen;	// current frame length in samples
-		uint32_t fnum;	// currently playing frame index
-		uint32_t fpos;	// the current position in frame
 		uint32_t shift_bits; // packing int to pcm
 
 		void write_seek_table();
