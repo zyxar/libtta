@@ -13,6 +13,16 @@
 #ifndef _FILTER_H
 #define _FILTER_H
 
+typedef struct {
+	int32_t index;
+	int32_t error;
+	int32_t round;
+	int32_t shift;
+	int32_t qm[8];
+	int32_t dx[24];
+	int32_t dl[24];
+} TTA_ALIGNED(16) TTA_fltst;
+
 #if defined(CPU_ARM) && defined(ENABLE_ASM) // implements in filter_arm.S
 	extern int hybrid_filter_dec(TTA_fltst *fs, int *in);
 	extern int hybrid_filter_enc(TTA_fltst *fs, int *in);

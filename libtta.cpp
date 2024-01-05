@@ -252,9 +252,24 @@ void compute_key_digits(void const *pstr, uint32_t len, uint64_t* out) {
 	*out = (((uint64_t) crc_hi) << 32) | ((uint64_t) crc_lo);
 } // compute_key_digits
 
-
-codec_state::codec_state() {}
-codec_state::~codec_state() {}
+class TTA_ALIGNED(32) codec_state // avx requires alignment of 32 bytes (for fst)
+{
+public:
+	explicit codec_state() {}
+	virtual ~codec_state() {}
+	void init(uint64_t data, int32_t shift, uint32_t k0, uint32_t k1);
+	__inline void decode(int32_t* value);
+	__inline void encode(int32_t* value);
+	__inline uint32_t& k0() { return m_k[0]; }
+	__inline uint32_t& k1() { return m_k[1]; }
+	__inline uint32_t& sum0() { return m_sum[0]; }
+	__inline uint32_t& sum1() { return m_sum[1]; }
+private:
+	TTA_fltst m_fltst;
+	uint32_t m_k[2];
+	uint32_t m_sum[2];
+	int32_t m_prev;
+};
 
 void codec_state::init(uint64_t data, int32_t shift, uint32_t k0, uint32_t k1) {
 	tta_memclear(&m_fltst, sizeof(TTA_fltst));
@@ -595,8 +610,9 @@ void bufio::flush_bit_cache() {
 	write_crc32();
 }
 
-codec_base::codec_base(fileio* io) : m_data(0), m_bufio(io), seek_table(nullptr) {}
+codec_base::codec_base(fileio* io) : m_codec(nullptr), m_data(0), m_bufio(io), seek_table(nullptr) {}
 codec_base::~codec_base() {
+	if (m_codec) tta_free(m_codec);
 	if (seek_table) tta_free(seek_table);
 }
 
@@ -704,6 +720,7 @@ void decoder::init(info *i, uint64_t pos, const std::string& password) {
 		throw exception(MEMORY_ERROR);
 
 	seek_allowed = read_seek_table();
+	m_codec = (codec_state*)tta_malloc(i->nch * sizeof(codec_state));
 	m_codec_last = m_codec + i->nch - 1;
 
 	frame_init(0, false);
@@ -938,7 +955,7 @@ void encoder::init(info *i, uint64_t pos, const std::string& password) {
 		throw exception(MEMORY_ERROR);
 
 	m_bufio.writer_skip_bytes((frames + 1) * 4);
-
+	m_codec = (codec_state*)tta_malloc(i->nch * sizeof(codec_state));
 	m_codec_last = m_codec + i->nch - 1;
 	shift_bits = (4 - depth) << 3;
 

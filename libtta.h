@@ -105,18 +105,6 @@ typedef unsigned __int64 (uint64_t);
 #define tta_free(__dest) _aligned_free(__dest)
 #endif
 
-
-typedef struct {
-	int32_t index;
-	int32_t error;
-	int32_t round;
-	int32_t shift;
-	int32_t qm[8];
-	int32_t dx[24];
-	int32_t dl[24];
-} TTA_ALIGNED(16) TTA_fltst;
-
-
 namespace tta
 {
 	// TTA audio format
@@ -162,24 +150,7 @@ namespace tta
 	// architecture type compatibility
 	TTA_EXTERN_API CPU_ARCH_TYPE binary_version();
 
-	class TTA_ALIGNED(32) codec_state // avx requires alignment of 32 bytes (for fst)
-	{
-	public:
-		explicit codec_state();
-		virtual ~codec_state();
-		void init(uint64_t data, int32_t shift, uint32_t k0, uint32_t k1);
-		__inline void decode(int32_t* value);
-		__inline void encode(int32_t* value);
-		__inline uint32_t& k0() { return m_k[0]; }
-		__inline uint32_t& k1() { return m_k[1]; }
-		__inline uint32_t& sum0() { return m_sum[0]; }
-		__inline uint32_t& sum1() { return m_sum[1]; }
-	private:
-		TTA_fltst m_fltst;
-		uint32_t m_k[2];
-		uint32_t m_sum[2];
-		int32_t m_prev;
-	};
+	class codec_state;
 
 	class fileio
 	{
@@ -258,10 +229,10 @@ namespace tta
 		virtual uint32_t get_rate() = 0;
 
 	protected:
-		codec_state m_codec[MAX_NCH]; // codec (1 per channel)
+		codec_state* m_codec; // codec (1 per channel)
+		codec_state *m_codec_last;
 		uint64_t m_data; // codec initialization data
 		bufio m_bufio;
-		codec_state *m_codec_last;
 		uint64_t *seek_table; // the playing position table
 		uint32_t format;	// tta data format
 		uint32_t rate;	// bitrate (kbps)
