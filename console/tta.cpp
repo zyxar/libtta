@@ -348,7 +348,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 		return -1;
 	}
 
-	aligned<encoder> aligned_encoder(&io);
+	encoder enc(&io);
 	smp_size = (wave_hdr.num_channels * ((wave_hdr.bits_per_sample + 7) / 8));
 	i.nch = wave_hdr.num_channels;
 	i.bps = wave_hdr.bits_per_sample;
@@ -384,7 +384,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 	i.samples = data_size / smp_size;
 
 	try {
-		aligned_encoder.Unwrap()->init(&i, 0, password);
+		enc.init(&i, 0, password);
 
 		while (data_size > 0) {
 			buf_size = (buf_size < data_size) ? buf_size : data_size;
@@ -393,13 +393,13 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 				throw exception(READ_ERROR);
 
 			if (len) {
-				aligned_encoder.Unwrap()->process_stream(buffer, len, tta_callback);
+				enc.process_stream(buffer, len, tta_callback);
 			} else break;
 
 			data_size -= len;
 		}
 
-		aligned_encoder.Unwrap()->finalize();
+		enc.finalize();
 		ret = 0;
 	} catch (exception& ex) {
 		tta_strerror(ex.code());
@@ -423,10 +423,10 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	info i;
 	int ret = -1;
 
-	aligned<decoder> aligned_decoder(&io);
+	decoder dec(&io);
 
 	try {
-		aligned_decoder.Unwrap()->init(&i, 0, password);
+		dec.init(&i, 0, password);
 	} catch (exception& ex) {
 		tta_strerror(ex.code());
 		goto done;
@@ -465,7 +465,7 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 
 	try {
 		while (1) {
-			len = aligned_decoder.Unwrap()->process_stream(buffer, buf_size, tta_callback);
+			len = dec.process_stream(buffer, buf_size, tta_callback);
 			if (len) {
 				if (!tta_write(outfile, buffer, len * smp_size, res) || !res)
 					throw exception(WRITE_ERROR);

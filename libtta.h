@@ -203,23 +203,6 @@ namespace tta
 		uint32_t skip_id3v2();
 	};
 
-	template<typename T>
-	class TTA_EXTERN_API aligned {
-	public:
-		explicit aligned(fileio *io) {
-			m_ptr = tta_malloc(sizeof(T));
-			m_obj = new(m_ptr)T(io);
-		}
-		virtual ~aligned() {
-			m_obj->~T();
-			tta_free(m_ptr);
-		}
-		T* Unwrap() { return m_obj; }
-	private:
-		T* m_obj;
-		void* m_ptr;
-	};
-
 	class codec_base {
 	public:
 		explicit codec_base(fileio* io);
