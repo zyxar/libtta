@@ -1,5 +1,8 @@
 #include <immintrin.h>
 
+#undef CODEC_STATE_ALIGNMENT
+#define CODEC_STATE_ALIGNMENT 32
+
 static __inline void hybrid_filter_dec(TTA_fltst *fs, int32_t *in) {
 	int32_t *pA = fs->dl;
 	int32_t *pB = fs->qm;

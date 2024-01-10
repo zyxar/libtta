@@ -23,6 +23,8 @@ typedef struct {
 	int32_t dl[24];
 } TTA_ALIGNED(16) TTA_fltst;
 
+#define CODEC_STATE_ALIGNMENT 16 // default
+
 #if defined(CPU_ARM) && defined(ENABLE_ASM) // implements in filter_arm.S
 	extern int hybrid_filter_dec(TTA_fltst *fs, int *in);
 	extern int hybrid_filter_enc(TTA_fltst *fs, int *in);
