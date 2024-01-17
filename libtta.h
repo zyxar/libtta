@@ -135,6 +135,11 @@ namespace tta
 		AARCH64
 	};
 
+	enum class impl_type {
+		native,
+		compat
+	};
+
 	struct TTA_ALIGNED(16) info {
 		uint32_t format;  // audio format
 		uint32_t nch;     // number of channels
@@ -236,10 +241,18 @@ namespace tta
 
 		void init(info *i, uint64_t pos, const std::string& password) override;
 		void frame_reset(uint32_t frame, fileio *io);
-		int process_stream(uint8_t *output, uint32_t out_bytes, CALLBACK callback=nullptr);
-		int process_frame(uint32_t in_bytes, uint8_t *output, uint32_t out_bytes);
+		int process_stream(uint8_t *output, uint32_t out_bytes, CALLBACK callback=nullptr, impl_type it=impl_type::native);
+		int process_frame(uint32_t in_bytes, uint8_t *output, uint32_t out_bytes, impl_type it=impl_type::native);
 		void set_position(uint32_t seconds, uint32_t *new_pos);
 		uint32_t get_rate() override;
+		template<enum impl_type it>
+		int decode_stream(uint8_t *output, uint32_t out_bytes, CALLBACK callback=nullptr) {
+			return process_stream(output, out_bytes, callback, it);
+		}
+		template<enum impl_type it>
+		int decode_frame(uint32_t in_bytes, uint8_t *output, uint32_t out_bytes) {
+			return process_frame(in_bytes, output, out_bytes, it);
+		}
 
 	protected:
 		bool seek_allowed;	// seek table flag
@@ -256,10 +269,18 @@ namespace tta
 
 		void init(info *i, uint64_t pos, const std::string& password) override;
 		void frame_reset(uint32_t frame, fileio *io);
-		void process_stream(uint8_t *input, uint32_t in_bytes, CALLBACK callback=nullptr);
-		void process_frame(uint8_t *input, uint32_t in_bytes);
+		void process_stream(uint8_t *input, uint32_t in_bytes, CALLBACK callback=nullptr, impl_type it=impl_type::native);
+		void process_frame(uint8_t *input, uint32_t in_bytes, impl_type it=impl_type::native);
 		void finalize();
 		uint32_t get_rate() override;
+		template<enum impl_type it>
+		void encode_stream(uint8_t *input, uint32_t in_bytes, CALLBACK callback=nullptr) {
+			process_stream(input, in_bytes, callback, it);
+		}
+		template<enum impl_type it>
+		void encode_frame(uint8_t *input, uint32_t in_bytes) {
+			process_frame(input, in_bytes, it);
+		}
 
 	protected:
 		uint32_t shift_bits; // packing int to pcm

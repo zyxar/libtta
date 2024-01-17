@@ -322,7 +322,7 @@ int test_libtta_compatibility() {
 
 //////////////////////////////// Compress ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-
+template<enum impl_type it>
 int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& password) {
 	uint32_t data_size;
 	WAVE_hdr wave_hdr;
@@ -393,7 +393,7 @@ int compress(HANDLE infile, HANDLE outfile, HANDLE tmpfile, const std::string& p
 				throw exception(error::READ_FILE);
 
 			if (len) {
-				enc.process_stream(buffer, len, tta_callback);
+				enc.encode_stream<it>(buffer, len, tta_callback);
 			} else break;
 
 			data_size -= len;
@@ -413,7 +413,7 @@ done:
 
 /////////////////////////////// Decompress //////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-
+template<enum impl_type it>
 int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 	WAVE_hdr wave_hdr;
 	tta_file_io io(infile);
@@ -465,7 +465,7 @@ int decompress(HANDLE infile, HANDLE outfile, const std::string& password) {
 
 	try {
 		while (1) {
-			len = dec.process_stream(buffer, buf_size, tta_callback);
+			len = dec.decode_stream<it>(buffer, buf_size, tta_callback);
 			if (len) {
 				if (!tta_write(outfile, buffer, len * smp_size, res) || !res)
 					throw exception(error::WRITE_FILE);
@@ -498,6 +498,7 @@ int tta_main(int argc, TTAwchar **argv) {
 	int blind = 0;
 	int ret = -1;
 	char c;
+	bool force_compat = false;
 
 	setlocale(LC_ALL, LOCALE);
 	myname = argv[0];
@@ -505,8 +506,7 @@ int tta_main(int argc, TTAwchar **argv) {
 	tta_print("\r\nTTA1 lossless audio encoder/decoder, version %s\n\n", TTA_VERSION);
 
 	if (test_libtta_compatibility()) {
-		tta_print("\r%s: unsupported architecture type\n", myname);
-		return ret;
+		force_compat = true;
 	}
 
 	if (argc > 3) {
@@ -518,11 +518,14 @@ int tta_main(int argc, TTAwchar **argv) {
 		goto done;
 	}
 
-	while ((c = getopt(argc, argv, "hedbp:")) != -1)
+	while ((c = getopt(argc, argv, "hcedbp:")) != -1)
 	switch (c) {
 		case 'h': // print help
 			usage();
 			goto done;
+		case 'c': // compat mode
+			force_compat = true;
+			break;
 		case 'e': // encode file
 			if (act == 2) {
 				tta_print("\r%s: can't combine two options '-e & -d'\n", myname);
@@ -592,7 +595,11 @@ int tta_main(int argc, TTAwchar **argv) {
 				goto done;
 			} else tta_print("\rTempfile: \"%s\"\n", fname_tmp);
 		}
-		ret = compress(infile, outfile, tmpfile, password);
+		if (force_compat) {
+			ret = compress<impl_type::compat>(infile, outfile, tmpfile, password);
+		} else {
+			ret = compress<impl_type::native>(infile, outfile, tmpfile, password);
+		}
 		if (blind && tmpfile != INVALID_HANDLE_VALUE) {
 			tta_close(tmpfile);
 			tta_unlink(fname_tmp);
@@ -600,7 +607,11 @@ int tta_main(int argc, TTAwchar **argv) {
 		break;
 	case 2:
 		tta_print("\rDecoding: \"%s\" to \"%s\"\n", fname_in, fname_out);
-		ret = decompress(infile, outfile, password);
+		if (force_compat) {
+			ret = decompress<impl_type::compat>(infile, outfile, password);
+		} else {
+			ret = decompress<impl_type::native>(infile, outfile, password);			
+		}
 		break;
 	}
 

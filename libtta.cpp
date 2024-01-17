@@ -260,7 +260,9 @@ public:
 	static void* operator new(size_t count);
 	static void* operator new[](size_t count);
 	void init(uint64_t data, int32_t shift, uint32_t k0, uint32_t k1);
+	template<enum impl_type>
 	__inline void decode(int32_t* value);
+	template<enum impl_type>
 	__inline void encode(int32_t* value);
 	__inline uint32_t& k0() { return m_k[0]; }
 	__inline uint32_t& k1() { return m_k[1]; }
@@ -300,7 +302,8 @@ void codec_state::init(uint64_t data, int32_t shift, uint32_t k0, uint32_t k1) {
 	m_prev = 0;
 }
 
-void codec_state::decode(int32_t* value) {
+template<>
+void codec_state::decode<impl_type::native>(int32_t* value) {
 	// decompress stage 1: adaptive hybrid filter
 	hybrid_filter_dec(&m_fltst, value);
 	// decompress stage 2: fixed order 1 prediction
@@ -308,13 +311,33 @@ void codec_state::decode(int32_t* value) {
 	m_prev = *value;
 }
 
-void codec_state::encode(int32_t* value) {
+template<>
+void codec_state::decode<impl_type::compat>(int32_t* value) {
+	// decompress stage 1: adaptive hybrid filter
+	hybrid_filter_compat_dec(&m_fltst, value);
+	// decompress stage 2: fixed order 1 prediction
+	*value += PREDICTOR1(m_prev, 5);
+	m_prev = *value;
+}
+
+template<>
+void codec_state::encode<impl_type::native>(int32_t* value) {
 	// compress stage 1: fixed order 1 prediction
 	int32_t temp = *value;
 	*value -= PREDICTOR1(m_prev, 5);
 	m_prev = temp;
 	// compress stage 2: adaptive hybrid filter
 	hybrid_filter_enc(&m_fltst, value);
+}
+
+template<>
+void codec_state::encode<impl_type::compat>(int32_t* value) {
+	// compress stage 1: fixed order 1 prediction
+	int32_t temp = *value;
+	*value -= PREDICTOR1(m_prev, 5);
+	m_prev = temp;
+	// compress stage 2: adaptive hybrid filter
+	hybrid_filter_compat_enc(&m_fltst, value);
 }
 
 bufio::bufio(fileio *io) :
@@ -737,7 +760,7 @@ void decoder::init(info *i, uint64_t pos, const std::string& password) {
 } // init
 
 int decoder::process_stream(uint8_t *output, uint32_t out_bytes,
-	CALLBACK callback) {
+	CALLBACK callback, impl_type it) {
 	codec_state *dec = m_codec;
 	uint8_t *ptr = output;
 	int32_t cache[MAX_NCH];
@@ -750,7 +773,16 @@ int decoder::process_stream(uint8_t *output, uint32_t out_bytes,
 		&& ptr < output + out_bytes) {
 		value = m_bufio.get_value(*dec);
 
-		dec->decode(&value);
+		switch (it) {
+		case impl_type::native:
+			dec->decode<impl_type::native>(&value);
+			break;
+		case impl_type::compat:
+			dec->decode<impl_type::compat>(&value);
+			break;
+		default:
+			throw exception(error::UNSUPPORTED_ARCH);
+		}
 
 		if (dec < m_codec_last) {
 			*cp++ = value;
@@ -808,7 +840,8 @@ int decoder::process_stream(uint8_t *output, uint32_t out_bytes,
 } // process_stream
 
 int decoder::process_frame(uint32_t in_bytes, uint8_t *output,
-	uint32_t out_bytes) {
+	uint32_t out_bytes,
+	impl_type it) {
 	codec_state *dec = m_codec;
 	uint8_t *ptr = output;
 	int32_t cache[MAX_NCH];
@@ -821,7 +854,16 @@ int decoder::process_frame(uint32_t in_bytes, uint8_t *output,
 		&& ptr < output + out_bytes) {
 		value = m_bufio.get_value(*dec);
 
-		dec->decode(&value);
+		switch (it) {
+		case impl_type::native:
+			dec->decode<impl_type::native>(&value);
+			break;
+		case impl_type::compat:
+			dec->decode<impl_type::compat>(&value);
+			break;
+		default:
+			throw exception(error::UNSUPPORTED_ARCH);
+		}
 
 		if (dec < m_codec_last) {
 			*cp++ = value;
@@ -978,7 +1020,7 @@ void encoder::finalize() {
 } // finalize
 
 void encoder::process_stream(uint8_t *input, uint32_t in_bytes,
-	CALLBACK callback) {
+	CALLBACK callback, impl_type it) {
 	codec_state *enc = m_codec;
 	uint8_t *ptr = input;
 	uint8_t *pend = input + in_bytes;
@@ -1004,7 +1046,7 @@ void encoder::process_stream(uint8_t *input, uint32_t in_bytes,
 			} else curr -= res / 2;
 		}
 
-		enc->encode(&curr);
+		enc->encode<impl_type::native>(&curr);
 
 		m_bufio.put_value(*enc, curr);
 
@@ -1029,7 +1071,7 @@ void encoder::process_stream(uint8_t *input, uint32_t in_bytes,
 	} while (ptr <= pend);
 } // process_stream
 
-void encoder::process_frame(uint8_t *input, uint32_t in_bytes) {
+void encoder::process_frame(uint8_t *input, uint32_t in_bytes, impl_type it) {
 	codec_state *enc = m_codec;
 	uint8_t *ptr = input;
 	uint8_t *pend = input + in_bytes;
@@ -1055,7 +1097,7 @@ void encoder::process_frame(uint8_t *input, uint32_t in_bytes) {
 			} else curr -= res / 2;
 		}
 
-		enc->encode(&curr);
+		enc->encode<impl_type::native>(&curr);
 
 		m_bufio.put_value(*enc, curr);
 
