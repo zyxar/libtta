@@ -345,7 +345,7 @@ void bufio::reset() {
 uint8_t bufio::read_byte() {
 	if (m_pos == m_buffer+TTA_FIFO_BUFFER_SIZE) {
 		if (!m_io->Read(m_buffer, TTA_FIFO_BUFFER_SIZE))
-			throw exception(READ_ERROR);
+			throw exception(error::READ_FILE);
 		m_pos = m_buffer;
 	}
 	// update crc32 and statistics
@@ -415,7 +415,7 @@ uint32_t bufio::read_tta_header(info *i) {
 	if ('T' != read_byte() ||
 		'T' != read_byte() ||
 		'A' != read_byte() ||
-		'1' != read_byte()) throw exception(FORMAT_ERROR);
+		'1' != read_byte()) throw exception(error::FORMAT_INCOMPATIBLE);
 
 	i->format = read_uint16();
 	i->nch = read_uint16();
@@ -424,7 +424,7 @@ uint32_t bufio::read_tta_header(info *i) {
 	i->samples = read_uint32();
 
 	if (read_crc32())
-		throw exception(FILE_ERROR);
+		throw exception(error::FILE_CORRUPTED);
 
 	size += 22; // sizeof TTA header
 	return size;
@@ -518,7 +518,7 @@ void bufio::writer_done() {
 	int32_t buffer_size = (int32_t)(m_pos - m_buffer);
 	if (buffer_size) {
 		if (m_io->Write(m_buffer, buffer_size) != buffer_size)
-			throw exception(WRITE_ERROR);
+			throw exception(error::WRITE_FILE);
 		m_pos = m_buffer;
 	}
 }
@@ -526,7 +526,7 @@ void bufio::writer_done() {
 void bufio::write_byte(uint32_t value) {
 	if (m_pos == m_buffer+TTA_FIFO_BUFFER_SIZE) {
 		if (m_io->Write(m_buffer, TTA_FIFO_BUFFER_SIZE) != TTA_FIFO_BUFFER_SIZE)
-			throw exception(WRITE_ERROR);
+			throw exception(error::WRITE_FILE);
 		m_pos = m_buffer;
 	}
 	// update crc32 and statistics
@@ -660,7 +660,7 @@ void decoder::frame_init(uint32_t frame, bool seek_needed) {
 	if (seek_needed && seek_allowed) {
 		uint64_t pos = seek_table[fnum];
 		if (pos && m_bufio.io()->Seek(pos) < 0)
-			throw exception(SEEK_ERROR);
+			throw exception(error::SEEK_FILE);
 		m_bufio.reader_start();
 	}
 
@@ -688,7 +688,7 @@ void decoder::set_position(uint32_t seconds, uint32_t *new_pos) {
 	*new_pos = MUL_FRAME_TIME(frame);
 
 	if (!seek_allowed || frame >= frames)
-		throw exception(SEEK_ERROR);
+		throw exception(error::SEEK_FILE);
 
 	frame_init(frame, true);
 } // set_position
@@ -696,7 +696,7 @@ void decoder::set_position(uint32_t seconds, uint32_t *new_pos) {
 void decoder::init(info *i, uint64_t pos, const std::string& password) {
 	// set start position if required
 	if (pos && m_bufio.io()->Seek(pos) < 0)
-		throw exception(SEEK_ERROR);
+		throw exception(error::SEEK_FILE);
 
 	m_bufio.reader_start();
 	pos += m_bufio.read_tta_header(i);
@@ -706,12 +706,12 @@ void decoder::init(info *i, uint64_t pos, const std::string& password) {
 		i->bps < MIN_BPS ||
 		i->bps > MAX_BPS ||
 		i->nch > MAX_NCH)
-		throw exception(FORMAT_ERROR);
+		throw exception(error::FORMAT_INCOMPATIBLE);
 
 	// check for required data is present
 	if (i->format == FORMAT_ENCRYPTED) {
 		if (password == "")
-			throw exception(PASSWORD_ERROR);
+			throw exception(error::PASSWORD_PROTECTED);
 		compute_key_digits(password.c_str(),  password.size(), &m_data); // set password
 	}
 
@@ -727,7 +727,7 @@ void decoder::init(info *i, uint64_t pos, const std::string& password) {
 	// allocate memory for seek table data
 	seek_table = (uint64_t *) tta_malloc(frames * sizeof(uint64_t));
 	if (seek_table == NULL)
-		throw exception(MEMORY_ERROR);
+		throw exception(error::MEMORY_INSUFFICIENT);
 
 	seek_allowed = read_seek_table();
 	m_codec = new codec_state[i->nch];
@@ -887,7 +887,7 @@ void encoder::write_seek_table() {
 		return;
 
 	if (m_bufio.io()->Seek(offset) < 0)
-		throw exception(SEEK_ERROR);
+		throw exception(error::SEEK_FILE);
 
 	m_bufio.writer_start();
 	m_bufio.reset();
@@ -934,11 +934,11 @@ void encoder::init(info *i, uint64_t pos, const std::string& password) {
 		i->bps < MIN_BPS ||
 		i->bps > MAX_BPS ||
 		i->nch > MAX_NCH)
-		throw exception(FORMAT_ERROR);
+		throw exception(error::FORMAT_INCOMPATIBLE);
 
 	// set start position if required
 	if (pos && m_bufio.io()->Seek(pos) < 0)
-		throw exception(SEEK_ERROR);
+		throw exception(error::SEEK_FILE);
 
 	if (password == "") {
 		i->format = FORMAT_SIMPLE;
@@ -962,7 +962,7 @@ void encoder::init(info *i, uint64_t pos, const std::string& password) {
 	// allocate memory for seek table data
 	seek_table = (uint64_t *) tta_malloc(frames * sizeof(uint64_t));
 	if (seek_table == NULL)
-		throw exception(MEMORY_ERROR);
+		throw exception(error::MEMORY_INSUFFICIENT);
 
 	m_bufio.writer_skip_bytes((frames + 1) * 4);
 	m_codec = new codec_state[i->nch];

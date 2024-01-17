@@ -111,18 +111,17 @@ namespace tta
 	#define FORMAT_SIMPLE 1
 	#define FORMAT_ENCRYPTED 2
 
-	typedef enum {
-		NO_ERROR,	// no known errors found
-		OPEN_ERROR,	// can't open file
-		FORMAT_ERROR,	// not compatible file format
-		FILE_ERROR,	// file is corrupted
-		READ_ERROR,	// can't read from input file
-		WRITE_ERROR,	// can't write to output file
-		SEEK_ERROR,	// file seek error
-		MEMORY_ERROR,	// insufficient memory available
-		PASSWORD_ERROR,	// password protected file
-		NOT_SUPPORTED	// unsupported architecture
-	} ERROR;
+	enum class error {
+		OPEN_FILE, 				// can't open file
+		FORMAT_INCOMPATIBLE, 	// not compatible file format
+		FILE_CORRUPTED, 		// file is corrupted
+		READ_FILE, 				// can't read from input file
+		WRITE_FILE, 			// can't write to output file
+		SEEK_FILE, 				// file seek error
+		MEMORY_INSUFFICIENT, 	// insufficient memory available
+		PASSWORD_PROTECTED, 	// password protected file
+		UNSUPPORTED_ARCH 		// unsupported architecture
+	};
 
 	enum class cpu_arch {
 		UNKNOWN,
@@ -133,7 +132,8 @@ namespace tta
 		IX86_AVX,
 		IX86_AVX512,
 		ARM,
-		AARCH64};
+		AARCH64
+	};
 
 	struct TTA_ALIGNED(16) info {
 		uint32_t format;  // audio format
@@ -270,11 +270,11 @@ namespace tta
 
 	//////////////////////// TTA exception class //////////////////////////
 	class exception : public std::exception {
-		ERROR err_code;
+		error err;
 
 	public:
-		explicit exception(ERROR code) : err_code(code) {}
-		ERROR code() const { return err_code; }
+		explicit exception(error e) : err(e) {}
+		error error() const { return err; }
 	}; // class exception
 } // namespace tta
 
