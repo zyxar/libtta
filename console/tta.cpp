@@ -286,19 +286,19 @@ int64_t tta_file_io::Seek(int64_t offset) {
 }
 
 int test_libtta_compatibility() {
-	int ret = binary_version();
+	cpu_arch arch = binary_version();
 
-	if (ret == CPU_ARCH_UNDEFINED) return 0;
+	if (arch == cpu_arch::UNKNOWN) return 0;
 
 #if defined(CPU_X86)
 	{
 	int ax, bx, cx, dx;
 	tta_cpuid(1, ax, bx, cx, dx);
-	if (((dx & 0x4000000) && ret == CPU_ARCH_IX86_SSE2) ||
-		((cx & 0x0000001) && ret == CPU_ARCH_IX86_SSE3) ||
-		((cx & 0x0080000) && ret == CPU_ARCH_IX86_SSE4_1))
+	if (((dx & 0x4000000) && arch == cpu_arch::IX86_SSE2) ||
+		((cx & 0x0000001) && arch == cpu_arch::IX86_SSE3) ||
+		((cx & 0x0080000) && arch == cpu_arch::IX86_SSE4_1))
 		return 0;
-	else if (ret == CPU_ARCH_IX86_AVX) {
+	else if (arch == cpu_arch::IX86_AVX) {
 		bool avx = cx & (1 << 28) || false;
 		bool xsave = cx & (1 << 27) || false;
 		if (xsave && avx) {
@@ -310,14 +310,14 @@ int test_libtta_compatibility() {
 #elif defined(CPU_ARM)
 
 #if defined(__aarch64__)
-	if (ret == CPU_ARCH_AARCH64) return 0;
+	if (arch == cpu_arch::AARCH64) return 0;
 #else
-	if (ret == CPU_ARCH_ARM) return 0;
+	if (arch == cpu_arch::ARM) return 0;
 #endif
 
 #endif
 
-	return ret;
+	return 1;
 } // test_libtta_compatibility
 
 //////////////////////////////// Compress ///////////////////////////////////

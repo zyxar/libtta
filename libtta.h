@@ -124,17 +124,16 @@ namespace tta
 		NOT_SUPPORTED	// unsupported architecture
 	} ERROR;
 
-	typedef enum {
-		CPU_ARCH_UNDEFINED,
-		CPU_ARCH_IX86_SSE2,
-		CPU_ARCH_IX86_SSE3,
-		CPU_ARCH_IX86_SSE4_1,
-		CPU_ARCH_IX86_SSE4_2,
-		CPU_ARCH_IX86_AVX,
-		CPU_ARCH_IX86_AVX512,
-		CPU_ARCH_ARM,
-		CPU_ARCH_AARCH64
-	} CPU_ARCH_TYPE;
+	enum class cpu_arch {
+		UNKNOWN,
+		IX86_SSE2,
+		IX86_SSE3,
+		IX86_SSE4_1,
+		IX86_SSE4_2,
+		IX86_AVX,
+		IX86_AVX512,
+		ARM,
+		AARCH64};
 
 	struct TTA_ALIGNED(16) info {
 		uint32_t format;  // audio format
@@ -148,7 +147,7 @@ namespace tta
 	typedef std::function<void(uint32_t, uint32_t, uint32_t)> CALLBACK;
 
 	// architecture type compatibility
-	TTA_EXTERN_API CPU_ARCH_TYPE binary_version();
+	TTA_EXTERN_API cpu_arch binary_version();
 
 	class codec_state;
 

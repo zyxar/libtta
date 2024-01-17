@@ -218,19 +218,19 @@ const int32_t flt_set[3] = {10, 9, 10};
 /////////////////////////// TTA common functions ////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-CPU_ARCH_TYPE binary_version() {
+cpu_arch binary_version() {
 #if defined(CPU_ARM) && defined(ENABLE_ASM)
-	return CPU_ARCH_ARM;
+	return cpu_arch::ARM;
 #elif defined(CPU_X86) && defined(ENABLE_AVX)
-	return CPU_ARCH_IX86_AVX;
+	return cpu_arch::IX86_AVX;
 #elif defined(CPU_X86) && defined(ENABLE_SSE4)
-	return CPU_ARCH_IX86_SSE4_1;
+	return cpu_arch::IX86_SSE4_1;
 #elif defined(CPU_X86) && defined(ENABLE_SSE2)
-	return CPU_ARCH_IX86_SSE2;
+	return cpu_arch::IX86_SSE2;
 #elif defined(__aarch64__) && defined(__APPLE__)
-	return CPU_ARCH_AARCH64;
+	return cpu_arch::AARCH64;
 #else
-	return CPU_ARCH_UNDEFINED;
+	return cpu_arch::UNKNOWN;
 #endif
 } // binary_version
 
