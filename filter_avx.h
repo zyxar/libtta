@@ -1,10 +1,13 @@
 #include <immintrin.h>
 
-static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
-	TTAint32 *pA = fs->dl;
-	TTAint32 *pB = fs->qm;
-	TTAint32 *pM = fs->dx;
-	TTAint32 sum = fs->round;
+#undef CODEC_STATE_ALIGNMENT
+#define CODEC_STATE_ALIGNMENT 32
+
+static __inline void hybrid_filter_dec(TTA_fltst *fs, int32_t *in) {
+	int32_t *pA = fs->dl;
+	int32_t *pB = fs->qm;
+	int32_t *pM = fs->dx;
+	int32_t sum = fs->round;
 	__m256i xa, xb, xm, xd;
 	__m128i xdlo;
 
@@ -43,11 +46,11 @@ static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
 	_mm256_store_si256((__m256i*)pA, xa);
 }
 
-static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
-	TTAint32 *pA = fs->dl;
-	TTAint32 *pB = fs->qm;
-	TTAint32 *pM = fs->dx;
-	TTAint32 sum = fs->round;
+static __inline void hybrid_filter_enc(TTA_fltst *fs, int32_t *in) {
+	int32_t *pA = fs->dl;
+	int32_t *pB = fs->qm;
+	int32_t *pM = fs->dx;
+	int32_t sum = fs->round;
 	__m256i xa, xb, xm, xd;
 	__m128i xdlo;
 

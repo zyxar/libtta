@@ -13,6 +13,88 @@
 #ifndef _FILTER_H
 #define _FILTER_H
 
+typedef struct {
+	int32_t index;
+	int32_t error;
+	int32_t round;
+	int32_t shift;
+	int32_t qm[8];
+	int32_t dx[24];
+	int32_t dl[24];
+} TTA_ALIGNED(16) TTA_fltst;
+
+#define CODEC_STATE_ALIGNMENT 16 // default
+
+///////////////////////// hybrid_filter_compat_dec //////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+static __inline void hybrid_filter_compat_dec(TTA_fltst *fs, int32_t *in) {
+	int32_t *pA = fs->dl;
+	int32_t *pB = fs->qm;
+	int32_t *pM = fs->dx;
+	int32_t sum = fs->round;
+
+	if (fs->error < 0) {
+		pB[0] -= pM[0]; pB[1] -= pM[1]; pB[2] -= pM[2]; pB[3] -= pM[3];
+		pB[4] -= pM[4]; pB[5] -= pM[5]; pB[6] -= pM[6]; pB[7] -= pM[7];
+	} else if (fs->error > 0) {
+		pB[0] += pM[0]; pB[1] += pM[1]; pB[2] += pM[2]; pB[3] += pM[3];
+		pB[4] += pM[4]; pB[5] += pM[5]; pB[6] += pM[6]; pB[7] += pM[7];
+	}
+
+	sum +=	pA[0] * pB[0] + pA[1] * pB[1] + pA[2] * pB[2] + pA[3] * pB[3] +
+		pA[4] * pB[4] + pA[5] * pB[5] + pA[6] * pB[6] + pA[7] * pB[7];
+
+	pM[0] = pM[1]; pM[1] = pM[2]; pM[2] = pM[3]; pM[3] = pM[4];
+	pA[0] = pA[1]; pA[1] = pA[2]; pA[2] = pA[3]; pA[3] = pA[4];
+
+	pM[4] = ((pA[4] >> 30) | 1);
+	pM[5] = ((pA[5] >> 30) | 2) & ~1;
+	pM[6] = ((pA[6] >> 30) | 2) & ~1;
+	pM[7] = ((pA[7] >> 30) | 4) & ~3;
+
+	fs->error = *in;
+	*in += (sum >> fs->shift);
+
+	pA[4] = -pA[5]; pA[5] = -pA[6];
+	pA[6] = *in - pA[7]; pA[7] = *in;
+	pA[5] += pA[6]; pA[4] += pA[5];
+} // hybrid_filter_compat_dec
+
+///////////////////////// hybrid_filter_compat_enc //////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+static __inline void hybrid_filter_compat_enc(TTA_fltst *fs, int32_t *in) {
+	int32_t *pA = fs->dl;
+	int32_t *pB = fs->qm;
+	int32_t *pM = fs->dx;
+	int32_t sum = fs->round;
+
+	if (fs->error < 0) {
+		pB[0] -= pM[0]; pB[1] -= pM[1]; pB[2] -= pM[2]; pB[3] -= pM[3];
+		pB[4] -= pM[4]; pB[5] -= pM[5]; pB[6] -= pM[6]; pB[7] -= pM[7];
+	} else if (fs->error > 0) {
+		pB[0] += pM[0]; pB[1] += pM[1]; pB[2] += pM[2]; pB[3] += pM[3];
+		pB[4] += pM[4]; pB[5] += pM[5]; pB[6] += pM[6]; pB[7] += pM[7];
+	}
+
+	sum +=	pA[0] * pB[0] + pA[1] * pB[1] + pA[2] * pB[2] + pA[3] * pB[3] +
+		pA[4] * pB[4] + pA[5] * pB[5] + pA[6] * pB[6] + pA[7] * pB[7];
+
+	pM[0] = pM[1]; pM[1] = pM[2]; pM[2] = pM[3]; pM[3] = pM[4];
+	pA[0] = pA[1]; pA[1] = pA[2]; pA[2] = pA[3]; pA[3] = pA[4];
+
+	pM[4] = ((pA[4] >> 30) | 1);
+	pM[5] = ((pA[5] >> 30) | 2) & ~1;
+	pM[6] = ((pA[6] >> 30) | 2) & ~1;
+	pM[7] = ((pA[7] >> 30) | 4) & ~3;
+
+	pA[4] = -pA[5]; pA[5] = -pA[6];
+	pA[6] = *in - pA[7]; pA[7] = *in;
+	pA[5] += pA[6]; pA[4] += pA[5];
+
+	*in -= (sum >> fs->shift);
+	fs->error = *in;
+} // hybrid_filter_compat_enc
+
 #if defined(CPU_ARM) && defined(ENABLE_ASM) // implements in filter_arm.S
 	extern int hybrid_filter_dec(TTA_fltst *fs, int *in);
 	extern int hybrid_filter_enc(TTA_fltst *fs, int *in);
@@ -36,11 +118,11 @@
 ////////////////////////// hybrid_filter_sse4_dec ///////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
+static __inline void hybrid_filter_dec(TTA_fltst *fs, int32_t *in) {
+	register int32_t *pA = fs->dl;
+	register int32_t *pB = fs->qm;
+	register int32_t *pM = fs->dx;
+	register int32_t sum = fs->round;
 	register __m128i xmA1, xmA2, xmB1, xmB2, xmM1, xmM2, xmDP;
 
 	xmA1 = _mm_load_si128((__m128i*)pA);
@@ -89,11 +171,11 @@ static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
 ////////////////////////// hybrid_filter_sse4_enc ///////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
+static __inline void hybrid_filter_enc(TTA_fltst *fs, int32_t *in) {
+	register int32_t *pA = fs->dl;
+	register int32_t *pB = fs->qm;
+	register int32_t *pM = fs->dx;
+	register int32_t sum = fs->round;
 	register __m128i xmA1, xmA2, xmB1, xmB2, xmM1, xmM2, xmDP;
 
 	xmA1 = _mm_load_si128((__m128i*)pA);
@@ -149,11 +231,11 @@ typedef union {
 } __simd_i256 __attribute__((aligned(32)));
 
 
-static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
-	TTAint32 *pA = fs->dl;
-	TTAint32 *pB = fs->qm;
-	TTAint32 *pM = fs->dx;
-	TTAint32 sum = fs->round;
+static __inline void hybrid_filter_dec(TTA_fltst *fs, int32_t *in) {
+	int32_t *pA = fs->dl;
+	int32_t *pB = fs->qm;
+	int32_t *pM = fs->dx;
+	int32_t sum = fs->round;
 	__simd_i256 xmA, xmB, xmM;
 
 	xmA.self = simd_make_int8(vld1q_s32(pA), vld1q_s32(pA+4));
@@ -188,11 +270,11 @@ static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
 	vst1q_s32(pA+4, i);
 }
 
-static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
-	TTAint32 *pA = fs->dl;
-	TTAint32 *pB = fs->qm;
-	TTAint32 *pM = fs->dx;
-	TTAint32 sum = fs->round;
+static __inline void hybrid_filter_enc(TTA_fltst *fs, int32_t *in) {
+	int32_t *pA = fs->dl;
+	int32_t *pB = fs->qm;
+	int32_t *pM = fs->dx;
+	int32_t sum = fs->round;
 	__simd_i256 xmA, xmB, xmM;
 
 	xmA.self = simd_make_int8(vld1q_s32(pA), vld1q_s32(pA+4));
@@ -229,76 +311,13 @@ static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
 
 #else // PORTABLE
 
-///////////////////////// hybrid_filter_compat_dec //////////////////////////
-/////////////////////////////////////////////////////////////////////////////
 
-static __inline void hybrid_filter_dec(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
-
-	if (fs->error < 0) {
-		pB[0] -= pM[0]; pB[1] -= pM[1]; pB[2] -= pM[2]; pB[3] -= pM[3];
-		pB[4] -= pM[4]; pB[5] -= pM[5]; pB[6] -= pM[6]; pB[7] -= pM[7];
-	} else if (fs->error > 0) {
-		pB[0] += pM[0]; pB[1] += pM[1]; pB[2] += pM[2]; pB[3] += pM[3];
-		pB[4] += pM[4]; pB[5] += pM[5]; pB[6] += pM[6]; pB[7] += pM[7];
-	}
-
-	sum +=	pA[0] * pB[0] + pA[1] * pB[1] + pA[2] * pB[2] + pA[3] * pB[3] +
-		pA[4] * pB[4] + pA[5] * pB[5] + pA[6] * pB[6] + pA[7] * pB[7];
-
-	pM[0] = pM[1]; pM[1] = pM[2]; pM[2] = pM[3]; pM[3] = pM[4];
-	pA[0] = pA[1]; pA[1] = pA[2]; pA[2] = pA[3]; pA[3] = pA[4];
-
-	pM[4] = ((pA[4] >> 30) | 1);
-	pM[5] = ((pA[5] >> 30) | 2) & ~1;
-	pM[6] = ((pA[6] >> 30) | 2) & ~1;
-	pM[7] = ((pA[7] >> 30) | 4) & ~3;
-
-	fs->error = *in;
-	*in += (sum >> fs->shift);
-
-	pA[4] = -pA[5]; pA[5] = -pA[6];
-	pA[6] = *in - pA[7]; pA[7] = *in;
-	pA[5] += pA[6]; pA[4] += pA[5];
+static __inline void hybrid_filter_dec(TTA_fltst *fs, int32_t *in) {
+	hybrid_filter_compat_dec(fs, in);
 } // hybrid_filter_dec
 
-///////////////////////// hybrid_filter_compat_enc //////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-
-static __inline void hybrid_filter_enc(TTA_fltst *fs, TTAint32 *in) {
-	register TTAint32 *pA = fs->dl;
-	register TTAint32 *pB = fs->qm;
-	register TTAint32 *pM = fs->dx;
-	register TTAint32 sum = fs->round;
-
-	if (fs->error < 0) {
-		pB[0] -= pM[0]; pB[1] -= pM[1]; pB[2] -= pM[2]; pB[3] -= pM[3];
-		pB[4] -= pM[4]; pB[5] -= pM[5]; pB[6] -= pM[6]; pB[7] -= pM[7];
-	} else if (fs->error > 0) {
-		pB[0] += pM[0]; pB[1] += pM[1]; pB[2] += pM[2]; pB[3] += pM[3];
-		pB[4] += pM[4]; pB[5] += pM[5]; pB[6] += pM[6]; pB[7] += pM[7];
-	}
-
-	sum +=	pA[0] * pB[0] + pA[1] * pB[1] + pA[2] * pB[2] + pA[3] * pB[3] +
-		pA[4] * pB[4] + pA[5] * pB[5] + pA[6] * pB[6] + pA[7] * pB[7];
-
-	pM[0] = pM[1]; pM[1] = pM[2]; pM[2] = pM[3]; pM[3] = pM[4];
-	pA[0] = pA[1]; pA[1] = pA[2]; pA[2] = pA[3]; pA[3] = pA[4];
-
-	pM[4] = ((pA[4] >> 30) | 1);
-	pM[5] = ((pA[5] >> 30) | 2) & ~1;
-	pM[6] = ((pA[6] >> 30) | 2) & ~1;
-	pM[7] = ((pA[7] >> 30) | 4) & ~3;
-
-	pA[4] = -pA[5]; pA[5] = -pA[6];
-	pA[6] = *in - pA[7]; pA[7] = *in;
-	pA[5] += pA[6]; pA[4] += pA[5];
-
-	*in -= (sum >> fs->shift);
-	fs->error = *in;
+static __inline void hybrid_filter_enc(TTA_fltst *fs, int32_t *in) {
+	hybrid_filter_compat_enc(fs, in);
 } // hybrid_filter_enc
 
 #endif // PORTABLE
